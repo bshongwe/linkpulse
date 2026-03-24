@@ -53,6 +53,11 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+.env.*
+
+# Configuration files (local overrides only)
+# /backend/config/config.yaml
+# /backend/config/config.*.yaml
 
 # Logs
 *.log
