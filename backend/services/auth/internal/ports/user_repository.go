@@ -3,6 +3,7 @@ package ports
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/bshongwe/linkpulse/backend/services/auth/internal/domain"
 )
 
