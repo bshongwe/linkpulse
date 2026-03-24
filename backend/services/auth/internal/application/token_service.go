@@ -6,6 +6,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/bshongwe/linkpulse/backend/services/auth/internal/domain"
+	"github.com/bshongwe/linkpulse/backend/shared/config"
 	"github.com/bshongwe/linkpulse/backend/shared/errors"
 )
 
@@ -16,10 +17,10 @@ type tokenService struct {
 	refreshExpiry time.Duration
 }
 
-func NewTokenService(accessSecret, refreshSecret string) domain.TokenService {
+func NewTokenService(cfg config.JWTConfig) domain.TokenService {
 	return &tokenService{
-		accessSecret:  []byte(accessSecret),
-		refreshSecret: []byte(refreshSecret),
+		accessSecret:  []byte(cfg.AccessSecret),
+		refreshSecret: []byte(cfg.RefreshSecret),
 		accessExpiry:  15 * time.Minute,
 		refreshExpiry: 7 * 24 * time.Hour,
 	}

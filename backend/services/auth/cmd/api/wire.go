@@ -15,9 +15,11 @@ import (
 var Set = wire.NewSet(
 	postgres.NewDB,
 	postgres.NewUserRepository,
+	application.NewTokenService,
 	application.NewAuthService,
 	http.NewHandler,
 	wire.FieldsOf(new(*config.Config), "Database"),
+	wire.FieldsOf(new(*config.Config), "JWT"),
 )
 
 func Initialize() (*http.Handler, func(), error) {

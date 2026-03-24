@@ -14,6 +14,7 @@ type Config struct {
 	Database DatabaseConfig `mapstructure:"database"`
 	Redis    RedisConfig    `mapstructure:"redis"`
 	OTel     OTelConfig     `mapstructure:"otel"`
+	JWT      JWTConfig      `mapstructure:"jwt"`
 }
 
 type ServerConfig struct {
@@ -38,6 +39,11 @@ type OTelConfig struct {
 	Endpoint    string `mapstructure:"endpoint"`
 	ServiceName string `mapstructure:"service_name"`
 	Environment string `mapstructure:"environment"`
+}
+
+type JWTConfig struct {
+	AccessSecret  string `mapstructure:"access_secret"`
+	RefreshSecret string `mapstructure:"refresh_secret"`
 }
 
 func Load() (*Config, error) {
