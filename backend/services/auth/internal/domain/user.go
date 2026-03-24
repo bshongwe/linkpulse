@@ -1,16 +1,9 @@
 package domain
 
 import (
-	"errors"
 	"time"
 
 	"github.com/google/uuid"
-)
-
-var (
-	ErrInvalidCredentials = errors.New("invalid email or password")
-	ErrUserNotFound       = errors.New("user not found")
-	ErrUserAlreadyExists  = errors.New("user already exists")
 )
 
 type User struct {

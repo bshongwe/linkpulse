@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"go.uber.org/zap"
 	"github.com/bshongwe/linkpulse/backend/shared/config"
 	"github.com/bshongwe/linkpulse/backend/shared/logger"
 	"go.opentelemetry.io/otel"

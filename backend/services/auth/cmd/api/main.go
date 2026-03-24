@@ -11,8 +11,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"github.com/bshongwe/linkpulse/backend/services/auth/internal/application"
-	httphandler "github.com/bshongwe/linkpulse/backend/services/auth/internal/presentation/http"
 	"github.com/bshongwe/linkpulse/backend/shared/config"
 	"github.com/bshongwe/linkpulse/backend/shared/logger"
 	"github.com/bshongwe/linkpulse/backend/shared/otel"
