@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -29,6 +30,12 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+type LoginResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiresAt    string `json:"expires_at"`
+}
+
 type UserResponse struct {
 	ID    string `json:"id"`
 	Email string `json:"email"`
@@ -42,17 +49,17 @@ func (h *Handler) Register(c *gin.Context) {
 		return
 	}
 
-	user, err := h.authService.Register(c.Request.Context(), req.Email, req.Password, req.Name)
+	tokenPair, err := h.authService.Register(c.Request.Context(), req.Email, req.Password, req.Name)
 	if err != nil {
 		logger.Log.Error("Register failed", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to register"})
 		return
 	}
 
-	c.JSON(http.StatusCreated, UserResponse{
-		ID:    user.ID.String(),
-		Email: user.Email,
-		Name:  user.Name,
+	c.JSON(http.StatusCreated, LoginResponse{
+		AccessToken:  tokenPair.AccessToken,
+		RefreshToken: tokenPair.RefreshToken,
+		ExpiresAt:    tokenPair.ExpiresAt.Format(time.RFC3339),
 	})
 }
 
@@ -63,7 +70,7 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	user, err := h.authService.Login(c.Request.Context(), req.Email, req.Password)
+	tokenPair, err := h.authService.Login(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
 		// Check if it is an invalid credentials error
 		if err == domain.ErrInvalidCredentials {
@@ -76,11 +83,11 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	// TODO: Generate JWT tokens (I'll update this later)
-	c.JSON(http.StatusOK, UserResponse{
-		ID:    user.ID.String(),
-		Email: user.Email,
-		Name:  user.Name,
+	// Generate JWT tokens
+	c.JSON(http.StatusOK, LoginResponse{
+		AccessToken:  tokenPair.AccessToken,
+		RefreshToken: tokenPair.RefreshToken,
+		ExpiresAt:    tokenPair.ExpiresAt.Format(time.RFC3339),
 	})
 }
 
