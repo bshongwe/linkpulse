@@ -13,6 +13,10 @@ redis:
   password: ${REDIS_PASSWORD:}
   db: 0
 
+jwt:
+  access_secret: ${JWT_ACCESS_SECRET}
+  refresh_secret: ${JWT_REFRESH_SECRET}
+
 otel:
   endpoint: ${OTEL_ENDPOINT:localhost:4317}
   service_name: "linkpulse-auth"
