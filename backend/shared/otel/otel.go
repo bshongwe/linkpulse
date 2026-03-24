@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/yourusername/linkpulse/backend/shared/config"
-	"github.com/yourusername/linkpulse/backend/shared/logger"
+	"github.com/bshongwe/linkpulse/backend/shared/config"
+	"github.com/bshongwe/linkpulse/backend/shared/logger"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
