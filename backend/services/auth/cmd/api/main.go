@@ -11,6 +11,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"github.com/bshongwe/linkpulse/backend/services/auth"
+	httphandler "github.com/bshongwe/linkpulse/backend/services/auth/internal/presentation/http"
 	"github.com/bshongwe/linkpulse/backend/shared/config"
 	"github.com/bshongwe/linkpulse/backend/shared/logger"
 	"github.com/bshongwe/linkpulse/backend/shared/otel"
@@ -30,27 +32,26 @@ func main() {
 	// Initialize OpenTelemetry
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	shutdown, err := otel.Init(ctx, &cfg.OTel)
+
+	shutdownOtel, err := otel.Init(ctx, &cfg.OTel)
 	if err != nil {
 		logger.Log.Error("Failed to init OpenTelemetry", zap.Error(err))
 	}
-	defer shutdown()
+	defer shutdownOtel()
 
-	// TODO: Initialize DB connection and Wire providers (next step)
-	// TODO: Wire up AuthService with actual UserRepository
-	// For now we start with a basic server setup
+	// Wire DB + Auth Service
+	handler, cleanup, err := auth.Initialize(cfg)
+	if err != nil {
+		logger.Log.Fatal("Failed to initialize dependencies", zap.Error(err))
+	}
+	defer cleanup()
 
 	r := gin.Default()
 
-	// Health check (temporary until full DI is wired)
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "auth"})
-	})
-
-	// TODO: Add auth routes once AuthService is wired
-	// authHandler := httphandler.NewHandler(authService)
-	// r.POST("/auth/register", authHandler.Register)
-	// r.POST("/auth/login", authHandler.Login)
+	// Routes
+	r.GET("/health", handler.Health)
+	r.POST("/register", handler.Register)
+	r.POST("/login", handler.Login)
 
 	srv := &http.Server{
 		Addr:    ":" + string(rune(cfg.Server.Port)),
@@ -72,9 +73,9 @@ func main() {
 
 	logger.Log.Info("Shutting down server...")
 
-	ctx, cancel = context.WithTimeout(context.Background(), cfg.Server.GracefulShutdown)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.Server.GracefulShutdown)
 	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := srv.Shutdown(shutdownCtx); err != nil {
 		logger.Log.Error("Server forced to shutdown", zap.Error(err))
 	}
 }
