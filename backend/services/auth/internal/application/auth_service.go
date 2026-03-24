@@ -50,3 +50,18 @@ func (s *AuthService) Register(ctx context.Context, email, password, name string
 
 	return user, nil
 }
+
+func (s *AuthService) Login(ctx context.Context, email, password string) (*domain.User, error) {
+	// Find user by email
+	user, err := s.userRepo.FindByEmail(ctx, email)
+	if err != nil {
+		return nil, domain.ErrInvalidCredentials
+	}
+
+	// Compare password hash
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
+		return nil, domain.ErrInvalidCredentials
+	}
+
+	return user, nil
+}
