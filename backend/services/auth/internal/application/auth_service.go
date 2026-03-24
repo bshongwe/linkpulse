@@ -12,15 +12,18 @@ import (
 )
 
 type AuthService struct {
-	userRepo ports.UserRepository
-	// tokenService, eventPublisher, etc. will be added later
+	userRepo     ports.UserRepository
+	tokenService domain.TokenService
 }
 
-func NewAuthService(userRepo ports.UserRepository) *AuthService {
-	return &AuthService{userRepo: userRepo}
+func NewAuthService(userRepo ports.UserRepository, tokenService domain.TokenService) *AuthService {
+	return &AuthService{
+		userRepo:     userRepo,
+		tokenService: tokenService,
+	}
 }
 
-func (s *AuthService) Register(ctx context.Context, email, password, name string) (*domain.User, error) {
+func (s *AuthService) Register(ctx context.Context, email, password, name string) (*domain.TokenPair, error) {
 	// Validate password
 	if password == "" {
 		return nil, errors.New("password cannot be empty")
@@ -48,10 +51,11 @@ func (s *AuthService) Register(ctx context.Context, email, password, name string
 		return nil, err
 	}
 
-	return user, nil
+	// Generate and return tokens
+	return s.tokenService.GenerateTokenPair(user)
 }
 
-func (s *AuthService) Login(ctx context.Context, email, password string) (*domain.User, error) {
+func (s *AuthService) Login(ctx context.Context, email, password string) (*domain.TokenPair, error) {
 	// Find user by email
 	user, err := s.userRepo.FindByEmail(ctx, email)
 	if err != nil {
@@ -63,5 +67,6 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*domai
 		return nil, domain.ErrInvalidCredentials
 	}
 
-	return user, nil
+	// Generate and return tokens
+	return s.tokenService.GenerateTokenPair(user)
 }
