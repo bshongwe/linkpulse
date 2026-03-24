@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -43,13 +45,35 @@ func main() {
 
 	r := gin.Default()
 
+	// CORS: restrict to allowed origins via LINKPULSE_ALLOWED_ORIGINS (comma-separated)
+	allowedOrigins := strings.Split(os.Getenv("LINKPULSE_ALLOWED_ORIGINS"), ",")
+	allowedSet := make(map[string]struct{}, len(allowedOrigins))
+	for _, o := range allowedOrigins {
+		if o = strings.TrimSpace(o); o != "" {
+			allowedSet[o] = struct{}{}
+		}
+	}
+	r.Use(func(c *gin.Context) {
+		origin := c.GetHeader("Origin")
+		if _, ok := allowedSet[origin]; ok {
+			c.Header("Access-Control-Allow-Origin", origin)
+			c.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+			c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		}
+		if c.Request.Method == http.MethodOptions {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+		c.Next()
+	})
+
 	// Routes
 	r.GET("/health", handler.Health)
 	r.POST("/register", handler.Register)
 	r.POST("/login", handler.Login)
 
 	srv := &http.Server{
-		Addr:    ":" + string(rune(cfg.Server.Port)),
+		Addr:    fmt.Sprintf(":%d", cfg.Server.Port),
 		Handler: r,
 	}
 

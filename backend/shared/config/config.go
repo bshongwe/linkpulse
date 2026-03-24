@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/spf13/viper"
@@ -46,6 +47,8 @@ func Load() (*Config, error) {
 	viper.AddConfigPath("./config")
 	viper.AutomaticEnv()
 	viper.SetEnvPrefix("LINKPULSE")
+	// Maps LINKPULSE_DATABASE_DSN -> database.dsn, LINKPULSE_REDIS_PASSWORD -> redis.password, etc.
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	if err := viper.ReadInConfig(); err != nil {
 		log.Printf("No config file found, relying on environment variables only: %v", err)
