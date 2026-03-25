@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/bshongwe/linkpulse/backend/services/auth/internal/ports"
 	"github.com/bshongwe/linkpulse/backend/shared/config"
 )
 
@@ -25,7 +26,7 @@ type tokenBlacklist struct {
 	client *redis.Client
 }
 
-func NewTokenBlacklist(client *redis.Client) *tokenBlacklist {
+func NewTokenBlacklist(client *redis.Client) ports.TokenBlacklist {
 	return &tokenBlacklist{client: client}
 }
 

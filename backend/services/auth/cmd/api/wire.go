@@ -5,8 +5,8 @@ package main
 
 import (
 	"github.com/google/wire"
-	"github.com/bshongwe/linkpulse/backend/services/auth/internal/adapters/memory"
 	"github.com/bshongwe/linkpulse/backend/services/auth/internal/adapters/postgres"
+	"github.com/bshongwe/linkpulse/backend/services/auth/internal/adapters/redis"
 	"github.com/bshongwe/linkpulse/backend/services/auth/internal/application"
 	"github.com/bshongwe/linkpulse/backend/services/auth/internal/presentation/http"
 	"github.com/bshongwe/linkpulse/backend/shared/config"
@@ -16,11 +16,13 @@ import (
 var Set = wire.NewSet(
 	postgres.NewDB,
 	postgres.NewUserRepository,
-	memory.NewInMemoryTokenBlacklist,
+	redis.NewClient,
+	redis.NewTokenBlacklist,
 	application.NewTokenService,
 	application.NewAuthService,
 	http.NewHandler,
 	wire.FieldsOf(new(*config.Config), "Database"),
+	wire.FieldsOf(new(*config.Config), "Redis"),
 	wire.FieldsOf(new(*config.Config), "JWT"),
 )
 
