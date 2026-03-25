@@ -7,12 +7,12 @@ import (
 )
 
 type User struct {
-	ID            uuid.UUID `json:"id"`
-	Email         string    `json:"email"`
-	PasswordHash  string    `json:"-"`
-	Name          string    `json:"name"`
-	EmailVerified bool      `json:"email_verified"`
-	CreatedAt     time.Time `json:"created_at"`
+	ID            uuid.UUID `json:"id" db:"id"`
+	Email         string    `json:"email" db:"email"`
+	PasswordHash  string    `json:"-" db:"password_hash"`
+	Name          string    `json:"name" db:"name"`
+	EmailVerified bool      `json:"email_verified" db:"email_verified"`
+	CreatedAt     time.Time `json:"created_at" db:"created_at"`
 }
 
 type Workspace struct {
