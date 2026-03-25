@@ -18,6 +18,41 @@ import (
 	"github.com/bshongwe/linkpulse/backend/shared/otel"
 )
 
+// buildCORSMiddleware creates a CORS middleware with allowed origins validation
+func buildCORSMiddleware(allowedOrigins string) gin.HandlerFunc {
+	allowedSet := make(map[string]struct{})
+	if allowedOrigins != "" {
+		for _, o := range strings.Split(allowedOrigins, ",") {
+			if o = strings.TrimSpace(o); o != "" {
+				allowedSet[o] = struct{}{}
+			}
+		}
+	}
+	
+	if len(allowedSet) == 0 {
+		logger.Log.Warn("CORS: No allowed origins configured. Set LINKPULSE_ALLOWED_ORIGINS to restrict access.")
+	}
+	
+	return func(c *gin.Context) {
+		origin := c.GetHeader("Origin")
+		if _, ok := allowedSet[origin]; ok {
+			// Origin is allowed
+			c.Header("Access-Control-Allow-Origin", origin)
+			c.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+			c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			if c.Request.Method == http.MethodOptions {
+				c.AbortWithStatus(http.StatusNoContent)
+				return
+			}
+		} else if c.Request.Method == http.MethodOptions {
+			// Reject preflight requests from disallowed origins
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+		c.Next()
+	}
+}
+
 func main() {
 	// Load config first (before Wire)
 	cfg, err := config.Load()
@@ -45,27 +80,8 @@ func main() {
 
 	r := gin.Default()
 
-	// CORS: restrict to allowed origins via LINKPULSE_ALLOWED_ORIGINS (comma-separated)
-	allowedOrigins := strings.Split(os.Getenv("LINKPULSE_ALLOWED_ORIGINS"), ",")
-	allowedSet := make(map[string]struct{}, len(allowedOrigins))
-	for _, o := range allowedOrigins {
-		if o = strings.TrimSpace(o); o != "" {
-			allowedSet[o] = struct{}{}
-		}
-	}
-	r.Use(func(c *gin.Context) {
-		origin := c.GetHeader("Origin")
-		if _, ok := allowedSet[origin]; ok {
-			c.Header("Access-Control-Allow-Origin", origin)
-			c.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-			c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		}
-		if c.Request.Method == http.MethodOptions {
-			c.AbortWithStatus(http.StatusNoContent)
-			return
-		}
-		c.Next()
-	})
+	// Apply CORS middleware with security validation
+	r.Use(buildCORSMiddleware(os.Getenv("LINKPULSE_ALLOWED_ORIGINS")))
 
 	// Routes
 	r.GET("/health", handler.Health)
