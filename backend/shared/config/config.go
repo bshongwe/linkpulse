@@ -65,10 +65,23 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	// Validate required secrets in production environments
-	// In development, config.yaml provides safe defaults
-	isProduction := strings.ToLower(cfg.OTel.Environment) == "production"
+	// Determine environment with fail-closed default (assume production if unknown)
+	// Only allow explicitly safe development/test environments
+	env := strings.TrimSpace(strings.ToLower(cfg.OTel.Environment))
 	
+	// Whitelist of non-production environments
+	nonProdEnvs := map[string]bool{
+		"development": true,
+		"dev":         true,
+		"staging":     true,
+		"test":        true,
+		"local":       true,
+	}
+	
+	isProduction := !nonProdEnvs[env]
+	
+	// Validate required secrets in production environments
+	// Fail-closed: treat unknown/missing environment as production
 	if isProduction {
 		if cfg.Database.DSN == "" {
 			return nil, fmt.Errorf("production error: database.dsn is required - set LINKPULSE_DATABASE_DSN environment variable")
