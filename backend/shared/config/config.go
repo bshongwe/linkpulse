@@ -65,5 +65,34 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
+	// Determine environment with fail-closed default (assume production if unknown)
+	// Only allow explicitly safe development/test environments
+	env := strings.TrimSpace(strings.ToLower(cfg.OTel.Environment))
+	
+	// Whitelist of non-production environments
+	nonProdEnvs := map[string]bool{
+		"development": true,
+		"dev":         true,
+		"staging":     true,
+		"test":        true,
+		"local":       true,
+	}
+	
+	isProduction := !nonProdEnvs[env]
+	
+	// Validate required secrets in production environments
+	// Fail-closed: treat unknown/missing environment as production
+	if isProduction {
+		if cfg.Database.DSN == "" {
+			return nil, fmt.Errorf("production error: database.dsn is required - set LINKPULSE_DATABASE_DSN environment variable")
+		}
+		if cfg.JWT.AccessSecret == "" || cfg.JWT.AccessSecret == "dev-secret-access" {
+			return nil, fmt.Errorf("production error: jwt.access_secret must not be the development default - set LINKPULSE_JWT_ACCESS_SECRET")
+		}
+		if cfg.JWT.RefreshSecret == "" || cfg.JWT.RefreshSecret == "dev-secret-refresh" {
+			return nil, fmt.Errorf("production error: jwt.refresh_secret must not be the development default - set LINKPULSE_JWT_REFRESH_SECRET")
+		}
+	}
+
 	return &cfg, nil
 }
