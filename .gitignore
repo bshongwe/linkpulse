@@ -144,10 +144,10 @@ build/
 out/
 
 # Service binaries (compiled from source, rebuilt on deploy)
-services/*/api
-services/auth/api
-services/shortener/api
-services/analytics/api
+backend/services/*/api
+backend/services/auth/api
+backend/services/shortener/api
+backend/services/analytics/api
 
 # Protocol buffers generated files
 *.pb.go
