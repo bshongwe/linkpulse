@@ -7,6 +7,7 @@
 package main
 
 import (
+	"github.com/bshongwe/linkpulse/backend/services/auth/internal/adapters/memory"
 	"github.com/bshongwe/linkpulse/backend/services/auth/internal/adapters/postgres"
 	"github.com/bshongwe/linkpulse/backend/services/auth/internal/application"
 	"github.com/bshongwe/linkpulse/backend/services/auth/internal/presentation/http"
@@ -28,7 +29,8 @@ func Initialize() (*http.Handler, func(), error) {
 	}
 	userRepository := postgres.NewUserRepository(db)
 	jwtConfig := configConfig.JWT
-	tokenService := application.NewTokenService(jwtConfig)
+	tokenBlacklist := memory.NewInMemoryTokenBlacklist()
+	tokenService := application.NewTokenService(jwtConfig, tokenBlacklist)
 	authService := application.NewAuthService(userRepository, tokenService)
 	handler := http.NewHandler(authService)
 	return handler, func() {
@@ -38,4 +40,4 @@ func Initialize() (*http.Handler, func(), error) {
 // wire.go:
 
 // Wire set for Auth service
-var Set = wire.NewSet(postgres.NewDB, postgres.NewUserRepository, application.NewTokenService, application.NewAuthService, http.NewHandler, wire.FieldsOf(new(*config.Config), "Database"), wire.FieldsOf(new(*config.Config), "JWT"))
+var Set = wire.NewSet(postgres.NewDB, postgres.NewUserRepository, memory.NewInMemoryTokenBlacklist, application.NewTokenService, application.NewAuthService, http.NewHandler, wire.FieldsOf(new(*config.Config), "Database"), wire.FieldsOf(new(*config.Config), "JWT"))
