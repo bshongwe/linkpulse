@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -22,5 +23,5 @@ type Claims struct {
 type TokenService interface {
 	GenerateTokenPair(user *User) (*TokenPair, error)
 	ValidateAccessToken(token string) (*Claims, error)
-	RefreshTokens(refreshToken string) (*TokenPair, error)
+	RefreshTokens(ctx context.Context, refreshToken string) (*TokenPair, error)
 }
