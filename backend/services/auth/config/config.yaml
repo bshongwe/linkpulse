@@ -3,7 +3,7 @@ server:
   graceful_shutdown: 30s
 
 database:
-  dsn: ${DATABASE_URL}
+  dsn: ${DATABASE_DSN:postgres://postgres:password@localhost:5432/linkpulse?sslmode=disable}
   max_open_conns: 25
   max_idle_conns: 5
   conn_max_lifetime: 5m
@@ -17,3 +17,7 @@ otel:
   endpoint: ${OTEL_ENDPOINT:localhost:4317}
   service_name: "linkpulse-auth"
   environment: ${ENVIRONMENT:development}
+
+jwt:
+  access_secret: ${JWT_ACCESS_SECRET:dev-secret-access}
+  refresh_secret: ${JWT_REFRESH_SECRET:dev-secret-refresh}
