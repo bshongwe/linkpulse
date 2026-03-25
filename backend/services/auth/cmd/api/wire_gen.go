@@ -27,7 +27,9 @@ func Initialize() (*http.Handler, func(), error) {
 		return nil, nil, err
 	}
 	userRepository := postgres.NewUserRepository(db)
-	authService := application.NewAuthService(userRepository)
+	jwtConfig := configConfig.JWT
+	tokenService := application.NewTokenService(jwtConfig)
+	authService := application.NewAuthService(userRepository, tokenService)
 	handler := http.NewHandler(authService)
 	return handler, func() {
 	}, nil
@@ -36,4 +38,4 @@ func Initialize() (*http.Handler, func(), error) {
 // wire.go:
 
 // Wire set for Auth service
-var Set = wire.NewSet(postgres.NewDB, postgres.NewUserRepository, application.NewAuthService, http.NewHandler, wire.FieldsOf(new(*config.Config), "Database"))
+var Set = wire.NewSet(postgres.NewDB, postgres.NewUserRepository, application.NewTokenService, application.NewAuthService, http.NewHandler, wire.FieldsOf(new(*config.Config), "Database"), wire.FieldsOf(new(*config.Config), "JWT"))
