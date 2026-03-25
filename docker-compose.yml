@@ -1,0 +1,75 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: linkpulse-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: linkpulse
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/services/auth/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: linkpulse-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  # Auth Service
+  auth-service:
+    build:
+      context: ./backend
+      dockerfile: services/auth/Dockerfile
+    container_name: linkpulse-auth
+    ports:
+      - "8081:8081"
+    environment:
+      LINKPULSE_SERVER_PORT: 8081
+      LINKPULSE_DATABASE_DSN: "postgres://postgres:password@postgres:5432/linkpulse?sslmode=disable"
+      LINKPULSE_OTEL_ENDPOINT: "http://tempo:4317"   # will add observability later
+      LINKPULSE_OTEL_SERVICE_NAME: "linkpulse-auth"
+      LINKPULSE_OTEL_ENVIRONMENT: "development"
+      LINKPULSE_JWT_ACCESS_SECRET: "super-secret-access-key-change-in-production-2026"
+      LINKPULSE_JWT_REFRESH_SECRET: "super-secret-refresh-key-change-in-production-2026"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # will update this for future services (shortener, analytics, etc.)
+  # shortener-service:
+  #   build: ...
+  #   ports:
+  #     - "8082:8082"
+
+  # Observability (optional for now - comment out if you don't want Tempo/Grafana yet)
+  # tempo:
+  #   image: grafana/tempo:latest
+  #   ports:
+  #     - "4317:4317"   # OTLP gRPC
+  #   command: ["-config.file=/etc/tempo.yaml"]
+  #   volumes:
+  #     - ./infra/observability/tempo.yaml:/etc/tempo.yaml
+
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   ports:
+  #     - "3000:3000"
+
+volumes:
+  postgres_data:
