@@ -143,6 +143,12 @@ dist/
 build/
 out/
 
+# Service binaries (compiled from source, rebuilt on deploy)
+backend/services/*/api
+backend/services/auth/api
+backend/services/shortener/api
+backend/services/analytics/api
+
 # Protocol buffers generated files
 *.pb.go
 *.pb.gw.go
