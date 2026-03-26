@@ -103,14 +103,18 @@ func (s *ShortenerService) CreateShortLink(
 	return link, nil
 }
 
-// GetShortLink retrieves a link by short code and records analytics
+// GetShortLink retrieves a link by short code
 func (s *ShortenerService) GetShortLink(ctx context.Context, shortCode string) (*domain.ShortLink, error) {
-	// Try cache first
 	cacheKey := fmt.Sprintf("%s%s", cacheKeyPrefix, shortCode)
-	if cached, err := s.cache.Get(ctx, cacheKey); err == nil && cached != nil {
-		// Cache hit - still fetch from DB for complete data and analytics
-		// but at least we can serve the redirect quickly
-		return s.getLinkFromDB(ctx, shortCode)
+	if cachedURL, err := s.cache.Get(ctx, cacheKey); err == nil && cachedURL != nil {
+		if originalURL, ok := cachedURL.(string); ok {
+			return &domain.ShortLink{
+				ShortCode:    shortCode,
+				OriginalURL:  originalURL,
+				IsActive:     true,
+				RedirectType: domain.RedirectTemporary,
+			}, nil
+		}
 	}
 
 	return s.getLinkFromDB(ctx, shortCode)
@@ -191,12 +195,13 @@ func (s *ShortenerService) DeactivateLink(
 	ctx context.Context,
 	workspaceID, linkID uuid.UUID,
 ) error {
+	// Fetch before deactivation so we still have the ShortCode for cache invalidation
+	link, _ := s.linkRepo.FindByID(ctx, workspaceID, linkID)
+
 	if err := s.linkRepo.Deactivate(ctx, workspaceID, linkID); err != nil {
 		return fmt.Errorf("failed to deactivate link: %w", err)
 	}
 
-	// Invalidate cache
-	link, _ := s.linkRepo.FindByID(ctx, workspaceID, linkID)
 	if link != nil {
 		cacheKey := fmt.Sprintf("%s%s", cacheKeyPrefix, link.ShortCode)
 		s.cache.Delete(ctx, cacheKey)
