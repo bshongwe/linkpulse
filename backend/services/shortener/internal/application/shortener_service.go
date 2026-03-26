@@ -339,44 +339,34 @@ func (w *pngWriter) Write(mat qrcode.Matrix) error {
 
 // matrixToImage converts a QR code matrix to an image.Image
 func matrixToImage(mat qrcode.Matrix) image.Image {
-	size := mat.Width()
-	const pixelSize = 10 // Each QR module becomes 10x10 pixels
-	imgSize := size * pixelSize
-	
-	// Create a new RGBA image
+	const pixelSize = 10
+	imgSize := mat.Width() * pixelSize
+
 	img := image.NewRGBA(image.Rect(0, 0, imgSize, imgSize))
-	
-	// Fill background with white
+
+	// Fill background white
 	white := color.RGBA{R: 255, G: 255, B: 255, A: 255}
 	for i := 0; i < imgSize; i++ {
 		for j := 0; j < imgSize; j++ {
 			img.SetRGBA(i, j, white)
 		}
 	}
-	
-	// Draw black modules for the QR code
+
+	// IsSet() is on QRValue (the cell), not on Matrix — use Iterate to visit each cell
 	black := color.RGBA{R: 0, G: 0, B: 0, A: 255}
-	for y := 0; y < size; y++ {
-		for x := 0; x < size; x++ {
-			if mat.IsSet(x, y) {
-				drawQRModule(img, x, y, pixelSize, black)
+	mat.Iterate(qrcode.IterDirection_ROW, func(x, y int, v qrcode.QRValue) {
+		if v.IsSet() {
+			startX := x * pixelSize
+			startY := y * pixelSize
+			for px := startX; px < startX+pixelSize; px++ {
+				for py := startY; py < startY+pixelSize; py++ {
+					img.Set(px, py, black)
+				}
 			}
 		}
-	}
-	
-	return img
-}
+	})
 
-// drawQRModule draws a single QR code module as a block of pixels
-func drawQRModule(img *image.RGBA, x, y, pixelSize int, c color.Color) {
-	startX := x * pixelSize
-	startY := y * pixelSize
-	
-	for px := startX; px < startX+pixelSize; px++ {
-		for py := startY; py < startY+pixelSize; py++ {
-			img.Set(px, py, c)
-		}
-	}
+	return img
 }
 
 func (w *pngWriter) Close() error {
