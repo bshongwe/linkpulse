@@ -13,7 +13,7 @@ import (
 
 	"github.com/bshongwe/linkpulse/backend/services/shortener/internal/domain"
 	"github.com/bshongwe/linkpulse/backend/services/shortener/internal/ports"
-	sharedErrors "github.com/bshongwe/linkpulse/shared/errors"
+	sharedErrors "github.com/bshongwe/linkpulse/backend/shared/errors"
 )
 
 // LinkRepository implements ports.LinkRepository using PostgreSQL
@@ -130,8 +130,8 @@ func (r *LinkRepository) FindByID(ctx context.Context, workspaceID, linkID uuid.
 	return link, nil
 }
 
-// FindByCustomAlias finds a link by custom alias within a workspace
-func (r *LinkRepository) FindByCustomAlias(ctx context.Context, workspaceID uuid.UUID, alias string) (*domain.ShortLink, error) {
+// FindByCustomAlias finds a link by custom alias (globally, not workspace-scoped)
+func (r *LinkRepository) FindByCustomAlias(ctx context.Context, alias string) (*domain.ShortLink, error) {
 	query := `
 		SELECT
 			id, workspace_id, short_code, original_url, created_by,
@@ -140,11 +140,11 @@ func (r *LinkRepository) FindByCustomAlias(ctx context.Context, workspaceID uuid
 			qr_code, qr_code_url, tags, campaign_id,
 			created_at, updated_at
 		FROM links
-		WHERE workspace_id = $1 AND short_code = $2
+		WHERE short_code = $1
 	`
 
 	link := &domain.ShortLink{}
-	err := r.db.GetContext(ctx, link, query, workspaceID, alias)
+	err := r.db.GetContext(ctx, link, query, alias)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, sharedErrors.New(sharedErrors.ErrNotFound, errLinkNotFound)
@@ -155,12 +155,12 @@ func (r *LinkRepository) FindByCustomAlias(ctx context.Context, workspaceID uuid
 	return link, nil
 }
 
-// IsCodeAvailable checks if a short code is available in a workspace
-func (r *LinkRepository) IsCodeAvailable(ctx context.Context, workspaceID uuid.UUID, code string) (bool, error) {
-	query := `SELECT EXISTS(SELECT 1 FROM links WHERE workspace_id = $1 AND short_code = $2)`
+// IsCodeAvailable checks if a short code is available globally
+func (r *LinkRepository) IsCodeAvailable(ctx context.Context, code string) (bool, error) {
+	query := `SELECT EXISTS(SELECT 1 FROM links WHERE short_code = $1)`
 
 	var exists bool
-	err := r.db.GetContext(ctx, &exists, query, workspaceID, code)
+	err := r.db.GetContext(ctx, &exists, query, code)
 	if err != nil {
 		return false, fmt.Errorf("failed to check code availability: %w", err)
 	}
@@ -336,16 +336,16 @@ func (r *LinkRepository) GetWorkspaceStats(ctx context.Context, workspaceID uuid
 			COUNT(*) as total_links,
 			SUM(CASE WHEN is_active = true THEN 1 ELSE 0 END) as active_links,
 			SUM(click_count) as total_clicks,
-			MAX(last_accessed_at) as last_access
+			MAX(updated_at) as last_updated
 		FROM links
 		WHERE workspace_id = $1
 	`
 
 	var stats struct {
-		TotalLinks  int64      `db:"total_links"`
-		ActiveLinks int64      `db:"active_links"`
-		TotalClicks int64      `db:"total_clicks"`
-		LastAccess  *time.Time `db:"last_access"`
+		TotalLinks   int64      `db:"total_links"`
+		ActiveLinks  int64      `db:"active_links"`
+		TotalClicks  int64      `db:"total_clicks"`
+		LastUpdated  *time.Time `db:"last_updated"`
 	}
 
 	err := r.db.GetContext(ctx, &stats, query, workspaceID)
@@ -353,12 +353,25 @@ func (r *LinkRepository) GetWorkspaceStats(ctx context.Context, workspaceID uuid
 		return nil, fmt.Errorf("failed to get workspace stats: %w", err)
 	}
 
+	inactiveLinks := stats.TotalLinks - stats.ActiveLinks
+	avgClicks := 0.0
+	if stats.TotalLinks > 0 {
+		avgClicks = float64(stats.TotalClicks) / float64(stats.TotalLinks)
+	}
+
+	lastUpdated := time.Now()
+	if stats.LastUpdated != nil {
+		lastUpdated = *stats.LastUpdated
+	}
+
 	return &ports.WorkspaceStats{
-		WorkspaceID: workspaceID,
-		TotalLinks:  stats.TotalLinks,
-		ActiveLinks: stats.ActiveLinks,
-		TotalClicks: stats.TotalClicks,
-		LastAccess:  stats.LastAccess,
+		WorkspaceID:   workspaceID,
+		TotalLinks:    stats.TotalLinks,
+		ActiveLinks:   stats.ActiveLinks,
+		InactiveLinks: inactiveLinks,
+		TotalClicks:   stats.TotalClicks,
+		AverageClicks: avgClicks,
+		LastUpdated:   lastUpdated,
 	}, nil
 }
 
@@ -550,9 +563,9 @@ func (r *LinkRepository) SearchByTag(ctx context.Context, workspaceID uuid.UUID,
 	return links, total, nil
 }
 
-// ExpiringLinks retrieves links that expire within a certain time window
-func (r *LinkRepository) ExpiringLinks(ctx context.Context, workspaceID uuid.UUID, within time.Duration) ([]*domain.ShortLink, error) {
-	query := `
+// ExpiringLinks retrieves links that expire within a certain number of hours
+func (r *LinkRepository) ExpiringLinks(ctx context.Context, workspaceID uuid.UUID, withinHours int) ([]*domain.ShortLink, error) {
+	query := fmt.Sprintf(`
 		SELECT
 			id, workspace_id, short_code, original_url, created_by,
 			title, description, expires_at, is_active,
@@ -564,13 +577,13 @@ func (r *LinkRepository) ExpiringLinks(ctx context.Context, workspaceID uuid.UUI
 			workspace_id = $1
 			AND expires_at IS NOT NULL
 			AND expires_at > NOW()
-			AND expires_at <= NOW() + $2::INTERVAL
+			AND expires_at <= NOW() + '%d hours'::INTERVAL
 			AND is_active = true
 		ORDER BY expires_at ASC
-	`
+	`, withinHours)
 
 	links := []*domain.ShortLink{}
-	err := r.db.SelectContext(ctx, &links, query, workspaceID, fmt.Sprintf("%d seconds", int(within.Seconds())))
+	err := r.db.SelectContext(ctx, &links, query, workspaceID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("failed to get expiring links: %w", err)
 	}
