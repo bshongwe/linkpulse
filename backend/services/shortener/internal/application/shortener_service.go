@@ -6,6 +6,9 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,7 +16,7 @@ import (
 
 	"github.com/bshongwe/linkpulse/backend/services/shortener/internal/domain"
 	"github.com/bshongwe/linkpulse/backend/services/shortener/internal/ports"
-	"github.com/bshongwe/linkpulse/backend/shared/errors"
+	sharedErrors "github.com/bshongwe/linkpulse/backend/shared/errors"
 )
 
 // ShortenerService handles URL shortening business logic
@@ -52,7 +55,7 @@ func (s *ShortenerService) CreateShortLink(
 		return nil, fmt.Errorf("failed to check code availability: %w", err)
 	}
 	if !available {
-		return nil, errors.New(errors.ErrAlreadyExists, "short code already taken")
+		return nil, sharedErrors.New(sharedErrors.ErrAlreadyExists, "short code already taken")
 	}
 
 	// Validate redirect type
@@ -122,7 +125,7 @@ func (s *ShortenerService) getLinkFromDB(ctx context.Context, shortCode string) 
 
 	// Check if link can be accessed
 	if !link.CanAccess() {
-		return nil, errors.New(errors.ErrNotFound, "link is inactive or expired")
+		return nil, sharedErrors.New(sharedErrors.ErrNotFound, "link is inactive or expired")
 	}
 
 	return link, nil
@@ -298,9 +301,11 @@ func generateQRCode(url string) (string, error) {
 		return "", fmt.Errorf("failed to create QR code: %w", err)
 	}
 
-	// Render to PNG in memory
+	// Render to PNG in memory using a custom writer
 	buf := &bytes.Buffer{}
-	err = qr.Save(buf)
+	writer := &pngWriter{buf}
+	
+	err = qr.Save(writer)
 	if err != nil {
 		return "", fmt.Errorf("failed to render QR code: %w", err)
 	}
@@ -309,3 +314,68 @@ func generateQRCode(url string) (string, error) {
 	encoded := base64.StdEncoding.EncodeToString(buf.Bytes())
 	return encoded, nil
 }
+
+// pngWriter implements qrcode.Writer interface for PNG output
+type pngWriter struct {
+	*bytes.Buffer
+}
+
+func (w *pngWriter) Write(mat qrcode.Matrix) error {
+	// Convert QR matrix to a PNG image
+	img := matrixToImage(mat)
+	
+	// Encode the image as PNG to the buffer
+	if err := png.Encode(w.Buffer, img); err != nil {
+		return fmt.Errorf("failed to encode PNG: %w", err)
+	}
+	
+	return nil
+}
+
+// matrixToImage converts a QR code matrix to an image.Image
+func matrixToImage(mat qrcode.Matrix) image.Image {
+	size := mat.Width()
+	const pixelSize = 10 // Each QR module becomes 10x10 pixels
+	imgSize := size * pixelSize
+	
+	// Create a new RGBA image
+	img := image.NewRGBA(image.Rect(0, 0, imgSize, imgSize))
+	
+	// Fill background with white
+	white := color.RGBA{R: 255, G: 255, B: 255, A: 255}
+	for i := 0; i < imgSize; i++ {
+		for j := 0; j < imgSize; j++ {
+			img.SetRGBA(i, j, white)
+		}
+	}
+	
+	// Draw black modules for the QR code
+	black := color.RGBA{R: 0, G: 0, B: 0, A: 255}
+	for y := 0; y < size; y++ {
+		for x := 0; x < size; x++ {
+			if mat.IsSet(x, y) {
+				drawQRModule(img, x, y, pixelSize, black)
+			}
+		}
+	}
+	
+	return img
+}
+
+// drawQRModule draws a single QR code module as a block of pixels
+func drawQRModule(img *image.RGBA, x, y, pixelSize int, c color.Color) {
+	startX := x * pixelSize
+	startY := y * pixelSize
+	
+	for px := startX; px < startX+pixelSize; px++ {
+		for py := startY; py < startY+pixelSize; py++ {
+			img.Set(px, py, c)
+		}
+	}
+}
+
+func (w *pngWriter) Close() error {
+	// No-op for buffer
+	return nil
+}
+
