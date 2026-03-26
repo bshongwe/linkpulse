@@ -305,7 +305,7 @@ func (r *LinkRepository) UpdateLastAccess(ctx context.Context, linkID uuid.UUID)
 func (r *LinkRepository) GetStats(ctx context.Context, workspaceID, linkID uuid.UUID) (*ports.LinkStats, error) {
 	query := `
 		SELECT
-			id, click_count, created_at, last_accessed_at
+			id, short_code, click_count, created_at, updated_at, last_accessed_at
 		FROM links
 		WHERE id = $1 AND workspace_id = $2
 	`
@@ -321,8 +321,10 @@ func (r *LinkRepository) GetStats(ctx context.Context, workspaceID, linkID uuid.
 
 	stats := &ports.LinkStats{
 		LinkID:         link.ID,
+		ShortCode:      link.ShortCode,
 		ClickCount:     link.ClickCount,
 		CreatedAt:      link.CreatedAt,
+		UpdatedAt:      link.UpdatedAt,
 		LastAccessedAt: link.LastAccessedAt,
 	}
 
@@ -511,14 +513,13 @@ func (r *LinkRepository) SearchByTag(ctx context.Context, workspaceID uuid.UUID,
 		opts.Offset = 0
 	}
 
-	// Get total count - tags can be stored as comma-separated or array
+	// Get total count using PostgreSQL array containment
 	countQuery := `
 		SELECT COUNT(*) FROM links
-		WHERE workspace_id = $1 AND (tags LIKE $2 OR tags ILIKE $2)
+		WHERE workspace_id = $1 AND $2 = ANY(tags)
 	`
 	var total int64
-	likePattern := "%" + tag + "%"
-	err := r.db.GetContext(ctx, &total, countQuery, workspaceID, likePattern)
+	err := r.db.GetContext(ctx, &total, countQuery, workspaceID, tag)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count tagged links: %w", err)
 	}
@@ -549,13 +550,13 @@ func (r *LinkRepository) SearchByTag(ctx context.Context, workspaceID uuid.UUID,
 			qr_code, qr_code_url, tags, campaign_id,
 			created_at, updated_at
 		FROM links
-		WHERE workspace_id = $1 AND (tags LIKE $2 OR tags ILIKE $2)
+		WHERE workspace_id = $1 AND $2 = ANY(tags)
 		ORDER BY %s %s
 		LIMIT $3 OFFSET $4
 	`, sortField, sortOrder)
 
 	links := []*domain.ShortLink{}
-	err = r.db.SelectContext(ctx, &links, query, workspaceID, likePattern, opts.Limit, opts.Offset)
+	err = r.db.SelectContext(ctx, &links, query, workspaceID, tag, opts.Limit, opts.Offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to search by tag: %w", err)
 	}
