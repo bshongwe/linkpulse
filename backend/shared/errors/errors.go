@@ -1,6 +1,11 @@
 package errors
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+var As = errors.As
 
 type ErrorCode string
 
@@ -32,4 +37,20 @@ func New(code ErrorCode, msg string) error {
 
 func Wrap(err error, code ErrorCode, msg string) error {
 	return &AppError{Code: code, Message: msg, Err: err}
+}
+
+func IsNotFound(err error) bool {
+	var e *AppError
+	if ok := As(err, &e); ok {
+		return e.Code == ErrNotFound
+	}
+	return false
+}
+
+func IsAlreadyExists(err error) bool {
+	var e *AppError
+	if ok := As(err, &e); ok {
+		return e.Code == ErrAlreadyExists
+	}
+	return false
 }
