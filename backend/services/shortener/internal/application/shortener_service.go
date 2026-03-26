@@ -1,6 +1,7 @@
 package application
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/base64"
@@ -8,6 +9,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	qrcode "github.com/yeqown/go-qrcode/v2"
+
 	"github.com/bshongwe/linkpulse/backend/services/shortener/internal/domain"
 	"github.com/bshongwe/linkpulse/backend/services/shortener/internal/ports"
 	"github.com/bshongwe/linkpulse/backend/shared/errors"
@@ -58,6 +61,13 @@ func (s *ShortenerService) CreateShortLink(
 		redirectType = domain.RedirectTemporary
 	}
 
+	// Generate QR code for the original URL
+	qrCodeData, err := generateQRCode(req.OriginalURL)
+	if err != nil {
+		// Log error but don't fail - QR code is optional
+		fmt.Printf("warning: failed to generate QR code: %v\n", err)
+	}
+
 	// Create link entity
 	link := &domain.ShortLink{
 		ID:           uuid.New(),
@@ -71,6 +81,7 @@ func (s *ShortenerService) CreateShortLink(
 		RedirectType: redirectType,
 		IsActive:     true,
 		ClickCount:   0,
+		QRCode:       qrCodeData, // base64-encoded PNG
 		Tags:         req.Tags,
 		CampaignID:   req.CampaignID,
 		CreatedAt:    time.Now(),
@@ -278,4 +289,23 @@ func generateShortCode() string {
 	}
 	// Encode to base64 URL-safe and take first 8 chars
 	return base64.RawURLEncoding.EncodeToString(b)[:8]
+}
+
+// generateQRCode generates a QR code image and returns base64-encoded PNG
+func generateQRCode(url string) (string, error) {
+	qr, err := qrcode.New(url)
+	if err != nil {
+		return "", fmt.Errorf("failed to create QR code: %w", err)
+	}
+
+	// Render to PNG in memory
+	buf := &bytes.Buffer{}
+	err = qr.Save(buf)
+	if err != nil {
+		return "", fmt.Errorf("failed to render QR code: %w", err)
+	}
+
+	// Encode to base64
+	encoded := base64.StdEncoding.EncodeToString(buf.Bytes())
+	return encoded, nil
 }
