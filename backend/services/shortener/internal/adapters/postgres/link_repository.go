@@ -336,8 +336,8 @@ func (r *LinkRepository) GetWorkspaceStats(ctx context.Context, workspaceID uuid
 	query := `
 		SELECT
 			COUNT(*) as total_links,
-			SUM(CASE WHEN is_active = true THEN 1 ELSE 0 END) as active_links,
-			SUM(click_count) as total_clicks,
+			COALESCE(SUM(CASE WHEN is_active = true THEN 1 ELSE 0 END), 0) as active_links,
+			COALESCE(SUM(click_count), 0) as total_clicks,
 			MAX(updated_at) as last_updated
 		FROM links
 		WHERE workspace_id = $1
@@ -413,8 +413,13 @@ func (r *LinkRepository) ListByWorkspace(ctx context.Context, workspaceID uuid.U
 			sortField = opts.Sort
 		}
 	}
-	if opts.Order == "ASC" {
-		sortOrder = "ASC"
+	if opts.Order != "" {
+		switch strings.ToUpper(strings.TrimSpace(opts.Order)) {
+		case "ASC":
+			sortOrder = "ASC"
+		case "DESC":
+			sortOrder = "DESC"
+		}
 	}
 
 	query := fmt.Sprintf(`
@@ -474,8 +479,13 @@ func (r *LinkRepository) ListByCampaign(ctx context.Context, workspaceID, campai
 			sortField = opts.Sort
 		}
 	}
-	if opts.Order == "ASC" {
-		sortOrder = "ASC"
+	if opts.Order != "" {
+		switch strings.ToUpper(strings.TrimSpace(opts.Order)) {
+		case "ASC":
+			sortOrder = "ASC"
+		case "DESC":
+			sortOrder = "DESC"
+		}
 	}
 
 	query := fmt.Sprintf(`
@@ -538,8 +548,13 @@ func (r *LinkRepository) SearchByTag(ctx context.Context, workspaceID uuid.UUID,
 			sortField = opts.Sort
 		}
 	}
-	if opts.Order == "ASC" {
-		sortOrder = "ASC"
+	if opts.Order != "" {
+		switch strings.ToUpper(strings.TrimSpace(opts.Order)) {
+		case "ASC":
+			sortOrder = "ASC"
+		case "DESC":
+			sortOrder = "DESC"
+		}
 	}
 
 	query := fmt.Sprintf(`

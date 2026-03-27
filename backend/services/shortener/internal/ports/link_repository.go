@@ -73,10 +73,10 @@ type LinkRepository interface {
 
 // ListOptions provides filtering and pagination for list operations
 type ListOptions struct {
-	Limit  int    `json:"limit"`   // Max results (default: 50, max: 500)
+	Limit  int    `json:"limit"`   // Max results (default: 20, max enforced by repository: 100)
 	Offset int    `json:"offset"`  // Pagination offset
-	Sort   string `json:"sort"`    // Sort field: "created_at", "clicks", "updated_at" (default: "created_at")
-	Order  string `json:"order"`   // "asc" or "desc" (default: "desc")
+	Sort   string `json:"sort"`    // Sort field: "created_at", "click_count", "title", "last_accessed_at" (default: "created_at")
+	Order  string `json:"order"`   // Sort order: "asc" or "desc", case-insensitive (default: "desc")
 	Active *bool  `json:"active"`  // Filter by active status (nil = all)
 }
 

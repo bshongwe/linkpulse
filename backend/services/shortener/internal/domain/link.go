@@ -50,13 +50,13 @@ type CreateShortLinkRequest struct {
 
 // UpdateShortLinkRequest is the payload for updating a short link
 type UpdateShortLinkRequest struct {
-	Title       string     `json:"title,omitempty" validate:"omitempty,max=200"`
-	Description string     `json:"description,omitempty" validate:"omitempty,max=500"`
-	ExpiresAt   *time.Time `json:"expires_at,omitempty" validate:"omitempty,gtfield=Now"`
-	IsActive    bool       `json:"is_active"`
+	Title        string       `json:"title,omitempty" validate:"omitempty,max=200"`
+	Description  string       `json:"description,omitempty" validate:"omitempty,max=500"`
+	ExpiresAt    *time.Time   `json:"expires_at,omitempty" validate:"omitempty,gtfield=Now"`
+	IsActive     *bool        `json:"is_active,omitempty"` // pointer so omitted != false
 	RedirectType RedirectType `json:"redirect_type,omitempty"`
-	Tags        []string   `json:"tags,omitempty" validate:"omitempty,max=10,dive,max=50"`
-	CampaignID  *uuid.UUID `json:"campaign_id,omitempty"`
+	Tags         []string     `json:"tags,omitempty" validate:"omitempty,max=10,dive,max=50"`
+	CampaignID   *uuid.UUID   `json:"campaign_id,omitempty"`
 }
 
 // ShortLinkResponse is the response model for short link endpoints

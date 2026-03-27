@@ -118,6 +118,10 @@ func (h *ShortenerHandler) CreateShortLink(c *gin.Context) {
 
 	link, err := h.service.CreateShortLink(c.Request.Context(), domainReq, userID, workspaceID)
 	if err != nil {
+		if sharedErrors.IsAlreadyExists(err) {
+			c.JSON(http.StatusConflict, gin.H{"error": "short code already taken"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   errFailedCreateShortLink,
 			"details": err.Error(),
@@ -241,12 +245,11 @@ func (h *ShortenerHandler) GetShortLink(c *gin.Context) {
 
 // UpdateShortLinkRequest represents the request payload for updating a short link
 type UpdateShortLinkRequest struct {
-	ID           string   `json:"id" binding:"required"`
 	WorkspaceID  string   `json:"workspace_id" binding:"required"`
 	Title        string   `json:"title"`
 	Description  string   `json:"description"`
 	ExpiresAt    *int64   `json:"expires_at"`
-	IsActive     bool     `json:"is_active"`
+	IsActive     *bool    `json:"is_active"` // pointer so omitted != false
 	RedirectType string   `json:"redirect_type"`
 	Tags         []string `json:"tags"`
 	CampaignID   *string  `json:"campaign_id"`
@@ -268,7 +271,8 @@ func (h *ShortenerHandler) UpdateShortLink(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid workspace_id"})
 		return
 	}
-	linkID, err := uuid.Parse(req.ID)
+	// Read link ID from path param, not body
+	linkID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
@@ -337,7 +341,6 @@ func (h *ShortenerHandler) UpdateShortLink(c *gin.Context) {
 
 // DeactivateLinkRequest represents the request payload for deactivating a short link
 type DeactivateLinkRequest struct {
-	ID          string `json:"id" binding:"required"`
 	WorkspaceID string `json:"workspace_id" binding:"required"`
 }
 
@@ -357,7 +360,8 @@ func (h *ShortenerHandler) DeactivateLink(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid workspace_id"})
 		return
 	}
-	linkID, err := uuid.Parse(req.ID)
+	// Read link ID from path param
+	linkID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
@@ -375,12 +379,11 @@ func (h *ShortenerHandler) DeactivateLink(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusNoContent, nil)
+	c.Status(http.StatusNoContent)
 }
 
 // DeleteLinkRequest represents the request payload for deleting a short link
 type DeleteLinkRequest struct {
-	ID          string `json:"id" binding:"required"`
 	WorkspaceID string `json:"workspace_id" binding:"required"`
 }
 
@@ -400,7 +403,8 @@ func (h *ShortenerHandler) DeleteLink(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid workspace_id"})
 		return
 	}
-	linkID, err := uuid.Parse(req.ID)
+	// Read link ID from path param
+	linkID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
@@ -418,7 +422,7 @@ func (h *ShortenerHandler) DeleteLink(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusNoContent, nil)
+	c.Status(http.StatusNoContent)
 }
 
 // LinkStatsResponse represents the response for link statistics
@@ -433,7 +437,6 @@ type LinkStatsResponse struct {
 // GetLinkStats handles GET /shorten/:id/stats requests
 func (h *ShortenerHandler) GetLinkStats(c *gin.Context) {
 	var req struct {
-		ID          string `form:"id" binding:"required"`
 		WorkspaceID string `form:"workspace_id" binding:"required"`
 	}
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -449,7 +452,8 @@ func (h *ShortenerHandler) GetLinkStats(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid workspace_id"})
 		return
 	}
-	linkID, err := uuid.Parse(req.ID)
+	// Read link ID from path param
+	linkID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
@@ -523,11 +527,10 @@ func toLinkSummary(link *domain.ShortLink) LinkSummary {
 // ListLinksInWorkspace handles GET /shorten/workspace/:workspace_id requests
 func (h *ShortenerHandler) ListLinksInWorkspace(c *gin.Context) {
 	var req struct {
-		WorkspaceID string `form:"workspace_id" binding:"required"`
-		Page        int    `form:"page" binding:"min=1"`
-		PageSize    int    `form:"page_size" binding:"min=1,max=100"`
-		Sort        string `form:"sort"`
-		Order       string `form:"order"`
+		Page     int    `form:"page" binding:"min=1"`
+		PageSize int    `form:"page_size" binding:"min=1,max=100"`
+		Sort     string `form:"sort"`
+		Order    string `form:"order"`
 	}
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -537,7 +540,8 @@ func (h *ShortenerHandler) ListLinksInWorkspace(c *gin.Context) {
 		return
 	}
 
-	workspaceID, err := uuid.Parse(req.WorkspaceID)
+	// Read workspace ID from path param
+	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid workspace_id"})
 		return
@@ -583,7 +587,6 @@ func (h *ShortenerHandler) ListLinksInWorkspace(c *gin.Context) {
 // ListLinksByCampaign handles GET /shorten/campaign/:campaign_id requests
 func (h *ShortenerHandler) ListLinksByCampaign(c *gin.Context) {
 	var req struct {
-		CampaignID  string `form:"campaign_id" binding:"required"`
 		WorkspaceID string `form:"workspace_id" binding:"required"`
 		Page        int    `form:"page" binding:"min=1"`
 		PageSize    int    `form:"page_size" binding:"min=1,max=100"`
@@ -601,7 +604,8 @@ func (h *ShortenerHandler) ListLinksByCampaign(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid workspace_id"})
 		return
 	}
-	campaignID, err := uuid.Parse(req.CampaignID)
+	// Read campaign ID from path param
+	campaignID, err := uuid.Parse(c.Param("campaign_id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid campaign_id"})
 		return

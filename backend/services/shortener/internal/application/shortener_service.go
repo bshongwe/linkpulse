@@ -13,10 +13,12 @@ import (
 
 	"github.com/google/uuid"
 	qrcode "github.com/yeqown/go-qrcode/v2"
+	"go.uber.org/zap"
 
 	"github.com/bshongwe/linkpulse/backend/services/shortener/internal/domain"
 	"github.com/bshongwe/linkpulse/backend/services/shortener/internal/ports"
 	sharedErrors "github.com/bshongwe/linkpulse/backend/shared/errors"
+	"github.com/bshongwe/linkpulse/backend/shared/logger"
 )
 
 // ShortenerService handles URL shortening business logic
@@ -68,7 +70,7 @@ func (s *ShortenerService) CreateShortLink(
 	qrCodeData, err := generateQRCode(req.OriginalURL)
 	if err != nil {
 		// Log error but don't fail - QR code is optional
-		fmt.Printf("warning: failed to generate QR code: %v\n", err)
+		logger.Log.Warn("failed to generate QR code", zap.String("url", req.OriginalURL), zap.Error(err))
 	}
 
 	// Create link entity
@@ -98,25 +100,17 @@ func (s *ShortenerService) CreateShortLink(
 
 	// Cache the mapping for fast redirects (24 hour TTL)
 	cacheKey := fmt.Sprintf("%s%s", cacheKeyPrefix, shortCode)
-	s.cache.Set(ctx, cacheKey, req.OriginalURL, 24*time.Hour)
+	if err := s.cache.Set(ctx, cacheKey, req.OriginalURL, 24*time.Hour); err != nil {
+		// Log cache errors but don't fail - caching is optional
+		logger.Log.Warn("failed to cache short link", zap.String("short_code", shortCode), zap.Error(err))
+	}
 
 	return link, nil
 }
 
 // GetShortLink retrieves a link by short code
+// Always fetches from DB to ensure full metadata is returned (ID, workspace, timestamps, etc.)
 func (s *ShortenerService) GetShortLink(ctx context.Context, shortCode string) (*domain.ShortLink, error) {
-	cacheKey := fmt.Sprintf("%s%s", cacheKeyPrefix, shortCode)
-	if cachedURL, err := s.cache.Get(ctx, cacheKey); err == nil && cachedURL != nil {
-		if originalURL, ok := cachedURL.(string); ok {
-			return &domain.ShortLink{
-				ShortCode:    shortCode,
-				OriginalURL:  originalURL,
-				IsActive:     true,
-				RedirectType: domain.RedirectTemporary,
-			}, nil
-		}
-	}
-
 	return s.getLinkFromDB(ctx, shortCode)
 }
 
@@ -140,13 +134,13 @@ func (s *ShortenerService) RecordAccess(ctx context.Context, linkID uuid.UUID) e
 	// Increment click count in database
 	if err := s.linkRepo.IncrementClickCount(ctx, linkID); err != nil {
 		// Log but don't fail - analytics is secondary
-		fmt.Printf("warning: failed to increment click count for link %s: %v\n", linkID, err)
+		logger.Log.Warn("failed to increment click count", zap.String("link_id", linkID.String()), zap.Error(err))
 	}
 
 	// Update last accessed time
 	if err := s.linkRepo.UpdateLastAccess(ctx, linkID); err != nil {
 		// Log but don't fail
-		fmt.Printf("warning: failed to update last access for link %s: %v\n", linkID, err)
+		logger.Log.Warn("failed to update last access", zap.String("link_id", linkID.String()), zap.Error(err))
 	}
 
 	return nil
@@ -164,7 +158,7 @@ func (s *ShortenerService) UpdateShortLink(
 		return nil, fmt.Errorf("failed to find link: %w", err)
 	}
 
-	// Update fields
+	// Update fields — only apply values that were explicitly provided
 	if req.Title != "" {
 		link.Title = req.Title
 	}
@@ -177,9 +171,15 @@ func (s *ShortenerService) UpdateShortLink(
 	if req.RedirectType != "" {
 		link.RedirectType = req.RedirectType
 	}
-	link.IsActive = req.IsActive
-	link.Tags = req.Tags
-	link.CampaignID = req.CampaignID
+	if req.IsActive != nil {
+		link.IsActive = *req.IsActive
+	}
+	if req.Tags != nil {
+		link.Tags = req.Tags
+	}
+	if req.CampaignID != nil {
+		link.CampaignID = req.CampaignID
+	}
 	link.UpdatedAt = time.Now()
 
 	// Persist changes
