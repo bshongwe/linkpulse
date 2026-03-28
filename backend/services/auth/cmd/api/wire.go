@@ -8,6 +8,7 @@ import (
 	"github.com/bshongwe/linkpulse/backend/services/auth/internal/adapters/postgres"
 	"github.com/bshongwe/linkpulse/backend/services/auth/internal/adapters/redis"
 	"github.com/bshongwe/linkpulse/backend/services/auth/internal/application"
+	"github.com/bshongwe/linkpulse/backend/services/auth/internal/domain"
 	"github.com/bshongwe/linkpulse/backend/services/auth/internal/presentation/http"
 	"github.com/bshongwe/linkpulse/backend/shared/config"
 )
@@ -26,10 +27,10 @@ var Set = wire.NewSet(
 	wire.FieldsOf(new(*config.Config), "JWT"),
 )
 
-func Initialize() (*http.Handler, func(), error) {
+func Initialize() (*http.Handler, domain.TokenService, func(), error) {
 	wire.Build(
 		config.Load,
 		Set,
 	)
-	return nil, nil, nil // wire will replace this
+	return nil, nil, nil, nil // wire will replace this
 }

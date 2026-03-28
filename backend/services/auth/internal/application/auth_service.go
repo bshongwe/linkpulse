@@ -70,3 +70,7 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*domai
 	// Generate and return tokens
 	return s.tokenService.GenerateTokenPair(user)
 }
+
+func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
+	return s.tokenService.RevokeRefreshToken(ctx, refreshToken)
+}
