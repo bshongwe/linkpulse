@@ -24,4 +24,5 @@ type TokenService interface {
 	GenerateTokenPair(user *User) (*TokenPair, error)
 	ValidateAccessToken(token string) (*Claims, error)
 	RefreshTokens(ctx context.Context, refreshToken string) (*TokenPair, error)
+	RevokeRefreshToken(ctx context.Context, refreshToken string) error
 }

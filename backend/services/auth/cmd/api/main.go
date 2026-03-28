@@ -13,6 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+
 	"github.com/bshongwe/linkpulse/backend/services/auth/internal/application"
 	"github.com/bshongwe/linkpulse/backend/shared/config"
 	"github.com/bshongwe/linkpulse/backend/shared/logger"
@@ -96,8 +97,7 @@ func main() {
 	// Protected routes — require valid JWT
 	protected := r.Group("/")
 	protected.Use(middleware.AuthMiddleware(tokenAdapter))
-	// future protected routes registered here, e.g.:
-	// protected.POST("/logout", handler.Logout)
+	protected.POST("/logout", handler.Logout)
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Server.Port),

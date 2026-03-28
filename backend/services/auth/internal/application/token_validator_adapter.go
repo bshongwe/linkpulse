@@ -1,6 +1,8 @@
 package application
 
 import (
+	"errors"
+
 	"github.com/bshongwe/linkpulse/backend/services/auth/internal/domain"
 )
 
@@ -18,6 +20,9 @@ func (a *tokenValidatorAdapter) ValidateAccessToken(token string) (string, strin
 	claims, err := a.svc.ValidateAccessToken(token)
 	if err != nil {
 		return "", "", err
+	}
+	if claims == nil {
+		return "", "", errors.New("token claims are missing")
 	}
 	return claims.UserID.String(), claims.Email, nil
 }
