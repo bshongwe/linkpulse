@@ -45,7 +45,7 @@ func (s *tokenService) GenerateTokenPair(user *domain.User) (*domain.TokenPair, 
 	accessClaims := jwt.MapClaims{
 		"user_id":     user.ID,
 		"email":       user.Email,
-		"workspace_id": user.WorkspaceID,
+		"workspace_id": user.ID.String(), // Use user ID as default workspace for now
 		"exp":         time.Now().Add(s.accessExpiry).Unix(),
 		"iat":         time.Now().Unix(),
 	}
