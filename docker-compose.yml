@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: timescale/timescaledb:2.17.2-pg16-oss
     container_name: linkpulse-postgres
     environment:
       POSTGRES_USER: postgres
@@ -10,8 +10,10 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./backend/services/analytics/migrations/000_enable_timescaledb.sql:/docker-entrypoint-initdb.d/000_enable_timescaledb.sql
       - ./backend/services/auth/migrations/001_create_users_table.sql:/docker-entrypoint-initdb.d/001_create_users_table.sql
       - ./backend/services/shortener/migrations/001_create_links_table.sql:/docker-entrypoint-initdb.d/002_create_links_table.sql
+      - ./backend/services/analytics/migrations/001_create_click_events_hypertable.sql:/docker-entrypoint-initdb.d/003_create_click_events_hypertable.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -28,6 +30,30 @@ services:
       interval: 5s
       timeout: 3s
       retries: 3
+
+  kafka:
+    image: apache/kafka:latest
+    container_name: linkpulse-kafka
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:29093"
+      KAFKA_LISTENERS: "PLAINTEXT://kafka:9092,EXTERNAL://0.0.0.0:9093,CONTROLLER://kafka:29093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092,EXTERNAL://localhost:9093"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      CLUSTER_ID: "5L6g3nShT-eMCtK--X86sw"
+    healthcheck:
+      test: ["CMD", "/opt/kafka/bin/kafka-broker-api-versions.sh", "--bootstrap-server", "kafka:9092"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # Auth Service
   auth-service:
@@ -72,6 +98,28 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Analytics Service
+  analytics-service:
+    build:
+      context: ./backend
+      dockerfile: services/analytics/Dockerfile
+    container_name: linkpulse-analytics
+    ports:
+      - "8083:8082"
+    environment:
+      LINKPULSE_SERVER_PORT: 8082
+      LINKPULSE_DATABASE_DSN: "postgres://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/linkpulse?sslmode=disable"
+      KAFKA_BROKER: "kafka:9092"
+      LINKPULSE_OTEL_ENDPOINT: "http://tempo:4317"
+      LINKPULSE_OTEL_SERVICE_NAME: "linkpulse-analytics"
+      LINKPULSE_OTEL_ENVIRONMENT: "development"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     restart: unless-stopped
 
