@@ -38,20 +38,26 @@ func buildCORSMiddleware(allowedOrigins string) gin.HandlerFunc {
 	
 	return func(c *gin.Context) {
 		origin := c.GetHeader("Origin")
+		
+		// Check if origin is allowed
 		if _, ok := allowedSet[origin]; ok {
-			// Origin is allowed
 			c.Header("Access-Control-Allow-Origin", origin)
-			c.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-			c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-			if c.Request.Method == http.MethodOptions {
+			c.Header("Access-Control-Allow-Credentials", "true")
+			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
+			c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+			c.Header("Access-Control-Max-Age", "86400")
+		}
+		
+		// Handle preflight requests
+		if c.Request.Method == http.MethodOptions {
+			if _, ok := allowedSet[origin]; ok {
 				c.AbortWithStatus(http.StatusNoContent)
-				return
+			} else {
+				c.AbortWithStatus(http.StatusForbidden)
 			}
-		} else if c.Request.Method == http.MethodOptions {
-			// Reject preflight requests from disallowed origins
-			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}
+		
 		c.Next()
 	}
 }
