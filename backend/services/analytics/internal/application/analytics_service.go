@@ -58,7 +58,7 @@ func (s *AnalyticsService) RecordClick(ctx context.Context, event *domain.ClickE
 	}
 
 	// Enrich click event with geolocation if IP hash available
-	if event.IPAddressHash != "" && event.CountryCode == "" && s.locService != nil {
+	if event.IPAddressHash != "" && (event.CountryCode == nil || *event.CountryCode == "") && s.locService != nil {
 		// Note: IP hash cannot be reversed, so geolocation would need original IP
 		// This is a limitation - we'd need to do geolocation at the redirect endpoint
 		// and pass country code directly in the click event
