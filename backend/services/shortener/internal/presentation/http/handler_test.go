@@ -66,6 +66,10 @@ func (r *mockRepo) FindByID(ctx context.Context, workspaceID, linkID uuid.UUID) 
 	if !ok {
 		return nil, sharedErrors.New(sharedErrors.ErrNotFound, "not found")
 	}
+	// Enforce workspace isolation: link must belong to requested workspace
+	if l.WorkspaceID != workspaceID {
+		return nil, sharedErrors.New(sharedErrors.ErrNotFound, "not found")
+	}
 	return l, nil
 }
 func (r *mockRepo) FindByCustomAlias(ctx context.Context, alias string) (*domain.ShortLink, error) {
@@ -94,6 +98,10 @@ func (r *mockRepo) Deactivate(ctx context.Context, workspaceID, linkID uuid.UUID
 	if !ok {
 		return sharedErrors.New(sharedErrors.ErrNotFound, "not found")
 	}
+	// Enforce workspace isolation
+	if l.WorkspaceID != workspaceID {
+		return sharedErrors.New(sharedErrors.ErrNotFound, "not found")
+	}
 	l.IsActive = false
 	return nil
 }
@@ -102,6 +110,10 @@ func (r *mockRepo) Delete(ctx context.Context, workspaceID, linkID uuid.UUID) er
 	defer r.mu.Unlock()
 	l, ok := r.byID[linkID]
 	if !ok {
+		return sharedErrors.New(sharedErrors.ErrNotFound, "not found")
+	}
+	// Enforce workspace isolation
+	if l.WorkspaceID != workspaceID {
 		return sharedErrors.New(sharedErrors.ErrNotFound, "not found")
 	}
 	delete(r.links, l.ShortCode)
@@ -115,6 +127,10 @@ func (r *mockRepo) GetStats(ctx context.Context, workspaceID, linkID uuid.UUID) 
 	defer r.mu.Unlock()
 	l, ok := r.byID[linkID]
 	if !ok {
+		return nil, sharedErrors.New(sharedErrors.ErrNotFound, "not found")
+	}
+	// Enforce workspace isolation
+	if l.WorkspaceID != workspaceID {
 		return nil, sharedErrors.New(sharedErrors.ErrNotFound, "not found")
 	}
 	return &ports.LinkStats{LinkID: l.ID, ShortCode: l.ShortCode, CreatedAt: l.CreatedAt, UpdatedAt: l.UpdatedAt}, nil
@@ -454,9 +470,11 @@ func TestListLinksInWorkspace_200(t *testing.T) {
 		do(r, http.MethodPost, "/api/v1/shorten", body)
 	}
 
-	w := do(r, http.MethodGet, "/api/v1/shorten/workspace/"+wsID, nil)
+	// Add required pagination query parameters
+	w := do(r, http.MethodGet, "/api/v1/shorten/workspace/"+wsID+"?page=1&page_size=10", nil)
 	if w.Code != http.StatusOK {
 		t.Errorf("status = %d, want %d — body: %s", w.Code, http.StatusOK, w.Body)
+		return // Early return on error to prevent panic on nil decode
 	}
 
 	var resp map[string]interface{}
