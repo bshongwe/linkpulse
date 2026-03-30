@@ -34,7 +34,12 @@ const (
 
 // RecordClick persists a single click event to the hypertable
 func (r *ClickRepository) RecordClick(ctx context.Context, event *domain.ClickEvent) error {
-	id := uuid.New()
+	// Use event's ID if already set (for idempotency), otherwise generate new one
+	id := event.ID
+	if id == uuid.Nil {
+		id = uuid.New()
+	}
+
 	query := `INSERT INTO click_events (id, time, link_id, short_code, ip_hash, country_code, device_type, referrer, utm_source, utm_medium, utm_campaign)
 	          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
 
@@ -44,12 +49,12 @@ func (r *ClickRepository) RecordClick(ctx context.Context, event *domain.ClickEv
 		event.LinkID,
 		event.ShortCode,
 		nullableString(event.IPAddressHash),
-		nullableString(event.CountryCode),
-		nullableString(event.DeviceType),
-		nullableString(event.Referrer),
-		nullableString(event.UTMSource),
-		nullableString(event.UTMMedium),
-		nullableString(event.UTMCampaign),
+		event.CountryCode,
+		event.DeviceType,
+		event.Referrer,
+		event.UTMSource,
+		event.UTMMedium,
+		event.UTMCampaign,
 	)
 
 	if err != nil {
