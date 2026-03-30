@@ -28,7 +28,7 @@ func NewEventConsumer(brokers []string, topic string, groupID string, logger *za
 		Brokers:         brokers,
 		Topic:           topic,
 		GroupID:         groupID,
-		CommitInterval:  nil, // Commit after each message
+		CommitInterval:  commitInterval,
 		StartOffset:     kafka.LastOffset,
 		MaxBytes:        10e6, // 10MB
 		SessionTimeout:  30000, // 30 seconds
