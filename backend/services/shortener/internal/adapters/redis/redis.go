@@ -16,7 +16,10 @@ func NewClient(cfg *config.RedisConfig) (*redis.Client, error) {
 		Password: cfg.Password,
 		DB:       cfg.DB,
 	})
-	if err := client.Ping(context.Background()).Err(); err != nil {
+	// Ping Redis with timeout to verify connectivity
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := client.Ping(ctx).Err(); err != nil {
 		return nil, fmt.Errorf("failed to connect to redis: %w", err)
 	}
 	return client, nil
