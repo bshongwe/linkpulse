@@ -23,8 +23,8 @@ import (
 
 func main() {
 	// Initialize logger
-	log := logger.NewLogger("analytics")
-	defer log.Sync()
+	logger.Init("development")
+	log := logger.Log
 
 	// Database configuration from environment
 	dbURL := fmt.Sprintf(
