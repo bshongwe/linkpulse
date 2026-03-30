@@ -74,11 +74,20 @@ func TestJWTValidator_ValidateAccessToken(t *testing.T) {
 
 	t.Run("wrong signing method rejected", func(t *testing.T) {
 		// Test that tokens with non-HMAC signing methods are rejected.
-		// We construct a minimal RS256 token header without needing RSA keys.
-		// The validator should reject it before even trying to verify the signature.
-		// This token is deliberately malformed (invalid signature) for testing only.
-		malformedToken := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdCIsImV4cCI6OTk5OTk5OTk5OX0.invalidsignature"
-		_, _, err := validator.ValidateAccessToken(malformedToken)
+		// Construct token with non-HMAC method (None) to trigger rejection.
+		claims := jwt.MapClaims{
+			"user_id": "test",
+			"email":   "test@example.com",
+			"exp":     time.Now().Add(15 * time.Minute).Unix(),
+			"iat":     time.Now().Unix(),
+		}
+		// Use SigningMethodNone to create a token that won't match expected HMAC
+		token := jwt.NewWithClaims(jwt.SigningMethodNone, claims)
+		signed, err := token.SignedString(jwt.UnsafeAllowNoneSignatureType)
+		if err != nil {
+			t.Fatalf("failed to create test token: %v", err)
+		}
+		_, _, err = validator.ValidateAccessToken(signed)
 		if err == nil {
 			t.Fatal("expected error for wrong signing method, got nil")
 		}
