@@ -12,6 +12,17 @@ import (
 	"github.com/bshongwe/linkpulse/backend/shared/errors"
 )
 
+const (
+	errUnexpectedSigningMethod = "unexpected signing method"
+	errInvalidOrExpiredToken   = "invalid or expired token"
+	errInvalidClaims           = "invalid claims"
+	errInvalidRefreshToken     = "invalid refresh token"
+	errMissingTokenID          = "missing token id"
+	errTokenRevoked            = "token has been revoked"
+	errInvalidUserIDClaim      = "invalid user_id claim"
+	errInvalidEmailClaim       = "invalid email claim"
+)
+
 type tokenService struct {
 	accessSecret  []byte
 	refreshSecret []byte
@@ -69,7 +80,7 @@ func (s *tokenService) GenerateTokenPair(user *domain.User) (*domain.TokenPair, 
 func (s *tokenService) ValidateAccessToken(tokenStr string) (*domain.Claims, error) {
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.New(errors.ErrUnauthorized, "unexpected signing method")
+			return nil, errors.New(errors.ErrUnauthorized, errUnexpectedSigningMethod)
 		}
 		return s.accessSecret, nil
 	})
@@ -98,7 +109,7 @@ func (s *tokenService) RefreshTokens(ctx context.Context, refreshTokenStr string
 	token, err := jwt.Parse(refreshTokenStr, func(token *jwt.Token) (interface{}, error) {
 		// Guard against algorithm confusion attacks (same as ValidateAccessToken)
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.New(errors.ErrUnauthorized, "unexpected signing method")
+			return nil, errors.New(errors.ErrUnauthorized, errUnexpectedSigningMethod)
 		}
 		return s.refreshSecret, nil
 	})
@@ -142,7 +153,7 @@ func (s *tokenService) RefreshTokens(ctx context.Context, refreshTokenStr string
 func (s *tokenService) RevokeRefreshToken(ctx context.Context, refreshTokenStr string) error {
 	token, err := jwt.Parse(refreshTokenStr, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.New(errors.ErrUnauthorized, "unexpected signing method")
+			return nil, errors.New(errors.ErrUnauthorized, errUnexpectedSigningMethod)
 		}
 		return s.refreshSecret, nil
 	})

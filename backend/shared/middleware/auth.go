@@ -50,6 +50,10 @@ type JWTValidator struct {
 	accessSecret []byte
 }
 
+const (
+	errUnexpectedSigningMethod = "unexpected signing method"
+)
+
 func NewJWTValidator(accessSecret string) *JWTValidator {
 	return &JWTValidator{accessSecret: []byte(accessSecret)}
 }
@@ -57,7 +61,7 @@ func NewJWTValidator(accessSecret string) *JWTValidator {
 func (v *JWTValidator) ValidateAccessToken(tokenStr string) (string, string, error) {
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, sharedErrors.New(sharedErrors.ErrUnauthorized, "unexpected signing method")
+			return nil, sharedErrors.New(sharedErrors.ErrUnauthorized, errUnexpectedSigningMethod)
 		}
 		return v.accessSecret, nil
 	})
