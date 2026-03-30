@@ -13,11 +13,27 @@ import (
 )
 
 const (
-	errInvalidRequestPayload   = "invalid request payload"
-	errLinkNotFound            = "short link not found"
-	errFailedCreateShortLink   = "failed to create short link"
-	errFailedRetrieveShortLink = "failed to retrieve short link"
-	errLinkExpired             = "short link has expired"
+	errInvalidRequestPayload   = "invalid re	workspaceID, err := uuid.Parse(req.WorkspaceID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidWorkspaceID})
+		return
+	}
+	// Read link ID from path param
+	linkID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	totalClicks, err := h.service.GetLinkStats(c.Request.Context(), workspaceID, linkID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": errFailedRetrieveStats})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"total_clicks": totalClicks})
+}
+
 	errFailedUpdateShortLink   = "failed to update short link"
 	errFailedDeactivateLink    = "failed to deactivate short link"
 	errFailedDeleteLink        = "failed to delete short link"
@@ -80,7 +96,7 @@ func (h *ShortenerHandler) CreateShortLink(c *gin.Context) {
 
 	workspaceID, err := uuid.Parse(req.WorkspaceID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid workspace_id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidWorkspaceID})
 		return
 	}
 	userID, err := uuid.Parse(req.CreatedBy)
@@ -268,7 +284,7 @@ func (h *ShortenerHandler) UpdateShortLink(c *gin.Context) {
 
 	workspaceID, err := uuid.Parse(req.WorkspaceID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid workspace_id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidWorkspaceID})
 		return
 	}
 	// Read link ID from path param, not body
@@ -357,7 +373,7 @@ func (h *ShortenerHandler) DeactivateLink(c *gin.Context) {
 
 	workspaceID, err := uuid.Parse(req.WorkspaceID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid workspace_id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidWorkspaceID})
 		return
 	}
 	// Read link ID from path param
@@ -400,7 +416,7 @@ func (h *ShortenerHandler) DeleteLink(c *gin.Context) {
 
 	workspaceID, err := uuid.Parse(req.WorkspaceID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid workspace_id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidWorkspaceID})
 		return
 	}
 	// Read link ID from path param
@@ -449,7 +465,7 @@ func (h *ShortenerHandler) GetLinkStats(c *gin.Context) {
 
 	workspaceID, err := uuid.Parse(req.WorkspaceID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid workspace_id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidWorkspaceID})
 		return
 	}
 	// Read link ID from path param
@@ -543,7 +559,7 @@ func (h *ShortenerHandler) ListLinksInWorkspace(c *gin.Context) {
 	// Read workspace ID from path param
 	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid workspace_id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidWorkspaceID})
 		return
 	}
 
@@ -601,7 +617,7 @@ func (h *ShortenerHandler) ListLinksByCampaign(c *gin.Context) {
 
 	workspaceID, err := uuid.Parse(req.WorkspaceID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid workspace_id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidWorkspaceID})
 		return
 	}
 	// Read campaign ID from path param
@@ -667,7 +683,7 @@ func (h *ShortenerHandler) SearchByTag(c *gin.Context) {
 
 	workspaceID, err := uuid.Parse(req.WorkspaceID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid workspace_id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidWorkspaceID})
 		return
 	}
 
