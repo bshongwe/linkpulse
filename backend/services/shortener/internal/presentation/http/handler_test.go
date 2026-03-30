@@ -23,6 +23,15 @@ import (
 	"github.com/bshongwe/linkpulse/backend/shared/logger"
 )
 
+const (
+	errNotFound              = "not found"
+	exampleURL               = "https://example.com"
+	shortenEndpoint          = "/api/v1/shorten"
+	shortenEndpointSlash     = "/api/v1/shorten/"
+	statusCodeMsgWithBody    = "status = %d, want %d — body: %s"
+	statusCodeMsg            = "status = %d, want %d"
+)
+
 func init() {
 	gin.SetMode(gin.TestMode)
 	logger.Init("test")
@@ -55,7 +64,7 @@ func (r *mockRepo) FindByShortCode(ctx context.Context, code string) (*domain.Sh
 	defer r.mu.Unlock()
 	l, ok := r.links[code]
 	if !ok {
-		return nil, sharedErrors.New(sharedErrors.ErrNotFound, "not found")
+		return nil, sharedErrors.New(sharedErrors.ErrNotFound, errNotFound)
 	}
 	return l, nil
 }
@@ -64,11 +73,11 @@ func (r *mockRepo) FindByID(ctx context.Context, workspaceID, linkID uuid.UUID) 
 	defer r.mu.Unlock()
 	l, ok := r.byID[linkID]
 	if !ok {
-		return nil, sharedErrors.New(sharedErrors.ErrNotFound, "not found")
+		return nil, sharedErrors.New(sharedErrors.ErrNotFound, errNotFound)
 	}
 	// Enforce workspace isolation: link must belong to requested workspace
 	if l.WorkspaceID != workspaceID {
-		return nil, sharedErrors.New(sharedErrors.ErrNotFound, "not found")
+		return nil, sharedErrors.New(sharedErrors.ErrNotFound, errNotFound)
 	}
 	return l, nil
 }
@@ -85,7 +94,7 @@ func (r *mockRepo) Update(ctx context.Context, link *domain.ShortLink) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if _, ok := r.byID[link.ID]; !ok {
-		return sharedErrors.New(sharedErrors.ErrNotFound, "not found")
+		return sharedErrors.New(sharedErrors.ErrNotFound, errNotFound)
 	}
 	r.links[link.ShortCode] = link
 	r.byID[link.ID] = link
@@ -96,11 +105,11 @@ func (r *mockRepo) Deactivate(ctx context.Context, workspaceID, linkID uuid.UUID
 	defer r.mu.Unlock()
 	l, ok := r.byID[linkID]
 	if !ok {
-		return sharedErrors.New(sharedErrors.ErrNotFound, "not found")
+		return sharedErrors.New(sharedErrors.ErrNotFound, errNotFound)
 	}
 	// Enforce workspace isolation
 	if l.WorkspaceID != workspaceID {
-		return sharedErrors.New(sharedErrors.ErrNotFound, "not found")
+		return sharedErrors.New(sharedErrors.ErrNotFound, errNotFound)
 	}
 	l.IsActive = false
 	return nil
@@ -110,11 +119,11 @@ func (r *mockRepo) Delete(ctx context.Context, workspaceID, linkID uuid.UUID) er
 	defer r.mu.Unlock()
 	l, ok := r.byID[linkID]
 	if !ok {
-		return sharedErrors.New(sharedErrors.ErrNotFound, "not found")
+		return sharedErrors.New(sharedErrors.ErrNotFound, errNotFound)
 	}
 	// Enforce workspace isolation
 	if l.WorkspaceID != workspaceID {
-		return sharedErrors.New(sharedErrors.ErrNotFound, "not found")
+		return sharedErrors.New(sharedErrors.ErrNotFound, errNotFound)
 	}
 	delete(r.links, l.ShortCode)
 	delete(r.byID, linkID)
@@ -127,11 +136,11 @@ func (r *mockRepo) GetStats(ctx context.Context, workspaceID, linkID uuid.UUID) 
 	defer r.mu.Unlock()
 	l, ok := r.byID[linkID]
 	if !ok {
-		return nil, sharedErrors.New(sharedErrors.ErrNotFound, "not found")
+		return nil, sharedErrors.New(sharedErrors.ErrNotFound, errNotFound)
 	}
 	// Enforce workspace isolation
 	if l.WorkspaceID != workspaceID {
-		return nil, sharedErrors.New(sharedErrors.ErrNotFound, "not found")
+		return nil, sharedErrors.New(sharedErrors.ErrNotFound, errNotFound)
 	}
 	return &ports.LinkStats{LinkID: l.ID, ShortCode: l.ShortCode, CreatedAt: l.CreatedAt, UpdatedAt: l.UpdatedAt}, nil
 }
@@ -236,13 +245,13 @@ func do(r *gin.Engine, method, path string, body *bytes.Buffer) *httptest.Respon
 func TestCreateShortLink_201(t *testing.T) {
 	r, _ := newRouter()
 	body := jsonBody(t, map[string]interface{}{
-		"original_url": "https://example.com",
+		"original_url": exampleURL,
 		"workspace_id": uuid.New().String(),
 		"created_by":   uuid.New().String(),
 	})
-	w := do(r, http.MethodPost, "/api/v1/shorten", body)
+	w := do(r, http.MethodPost, shortenEndpoint, body)
 	if w.Code != http.StatusCreated {
-		t.Errorf("status = %d, want %d — body: %s", w.Code, http.StatusCreated, w.Body)
+		t.Errorf(statusCodeMsgWithBody, w.Code, http.StatusCreated, w.Body)
 	}
 
 	var resp map[string]interface{}
@@ -259,22 +268,22 @@ func TestCreateShortLink_400_MissingURL(t *testing.T) {
 		"workspace_id": uuid.New().String(),
 		"created_by":   uuid.New().String(),
 	})
-	w := do(r, http.MethodPost, "/api/v1/shorten", body)
+	w := do(r, http.MethodPost, shortenEndpoint, body)
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+		t.Errorf(statusCodeMsg, w.Code, http.StatusBadRequest)
 	}
 }
 
 func TestCreateShortLink_400_InvalidWorkspaceID(t *testing.T) {
 	r, _ := newRouter()
 	body := jsonBody(t, map[string]interface{}{
-		"original_url": "https://example.com",
+		"original_url": exampleURL,
 		"workspace_id": "not-a-uuid",
 		"created_by":   uuid.New().String(),
 	})
-	w := do(r, http.MethodPost, "/api/v1/shorten", body)
+	w := do(r, http.MethodPost, shortenEndpoint, body)
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+		t.Errorf(statusCodeMsg, w.Code, http.StatusBadRequest)
 	}
 }
 
@@ -283,14 +292,14 @@ func TestCreateShortLink_409_DuplicateAlias(t *testing.T) {
 	wsID := uuid.New().String()
 	body := func() *bytes.Buffer {
 		return jsonBody(t, map[string]interface{}{
-			"original_url": "https://example.com",
+			"original_url": exampleURL,
 			"workspace_id": wsID,
 			"created_by":   uuid.New().String(),
 			"custom_alias": "duplicate",
 		})
 	}
-	do(r, http.MethodPost, "/api/v1/shorten", body())
-	w := do(r, http.MethodPost, "/api/v1/shorten", body())
+	do(r, http.MethodPost, shortenEndpoint, body())
+	w := do(r, http.MethodPost, shortenEndpoint, body())
 	if w.Code != http.StatusConflict {
 		t.Errorf("status = %d, want %d", w.Code, http.StatusConflict)
 	}
@@ -301,34 +310,34 @@ func TestGetShortLink_200(t *testing.T) {
 	wsID := uuid.New().String()
 	// Create first
 	createBody := jsonBody(t, map[string]interface{}{
-		"original_url": "https://example.com",
+		"original_url": exampleURL,
 		"workspace_id": wsID,
 		"created_by":   uuid.New().String(),
 	})
-	cw := do(r, http.MethodPost, "/api/v1/shorten", createBody)
+	cw := do(r, http.MethodPost, shortenEndpoint, createBody)
 	var createResp map[string]interface{}
 	json.Unmarshal(cw.Body.Bytes(), &createResp)
 	shortCode := createResp["data"].(map[string]interface{})["short_code"].(string)
 
-	w := do(r, http.MethodGet, "/api/v1/shorten?short_code="+shortCode, nil)
+	w := do(r, http.MethodGet, shortenEndpoint+"?short_code="+shortCode, nil)
 	if w.Code != http.StatusOK {
-		t.Errorf("status = %d, want %d — body: %s", w.Code, http.StatusOK, w.Body)
+		t.Errorf(statusCodeMsgWithBody, w.Code, http.StatusOK, w.Body)
 	}
 }
 
 func TestGetShortLink_404(t *testing.T) {
 	r, _ := newRouter()
-	w := do(r, http.MethodGet, "/api/v1/shorten?short_code=doesnotexist", nil)
+	w := do(r, http.MethodGet, shortenEndpoint+"?short_code=doesnotexist", nil)
 	if w.Code != http.StatusNotFound {
-		t.Errorf("status = %d, want %d", w.Code, http.StatusNotFound)
+		t.Errorf(statusCodeMsg, w.Code, http.StatusNotFound)
 	}
 }
 
 func TestGetShortLink_400_MissingParam(t *testing.T) {
 	r, _ := newRouter()
-	w := do(r, http.MethodGet, "/api/v1/shorten", nil)
+	w := do(r, http.MethodGet, shortenEndpoint, nil)
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+		t.Errorf(statusCodeMsg, w.Code, http.StatusBadRequest)
 	}
 }
 
@@ -336,11 +345,11 @@ func TestGetShortLink_410_Expired(t *testing.T) {
 	r, repo := newRouter()
 	wsID := uuid.New()
 	createBody := jsonBody(t, map[string]interface{}{
-		"original_url": "https://example.com",
+		"original_url": exampleURL,
 		"workspace_id": wsID.String(),
 		"created_by":   uuid.New().String(),
 	})
-	cw := do(r, http.MethodPost, "/api/v1/shorten", createBody)
+	cw := do(r, http.MethodPost, shortenEndpoint, createBody)
 	var createResp map[string]interface{}
 	json.Unmarshal(cw.Body.Bytes(), &createResp)
 	shortCode := createResp["data"].(map[string]interface{})["short_code"].(string)
@@ -349,9 +358,9 @@ func TestGetShortLink_410_Expired(t *testing.T) {
 	past := time.Now().Add(-time.Second)
 	repo.links[shortCode].ExpiresAt = &past
 
-	w := do(r, http.MethodGet, "/api/v1/shorten?short_code="+shortCode, nil)
+	w := do(r, http.MethodGet, shortenEndpoint+"?short_code="+shortCode, nil)
 	if w.Code != http.StatusGone {
-		t.Errorf("status = %d, want %d", w.Code, http.StatusGone)
+		t.Errorf(statusCodeMsg, w.Code, http.StatusGone)
 	}
 }
 
@@ -359,11 +368,11 @@ func TestUpdateShortLink_200(t *testing.T) {
 	r, _ := newRouter()
 	wsID := uuid.New().String()
 	createBody := jsonBody(t, map[string]interface{}{
-		"original_url": "https://example.com",
+		"original_url": exampleURL,
 		"workspace_id": wsID,
 		"created_by":   uuid.New().String(),
 	})
-	cw := do(r, http.MethodPost, "/api/v1/shorten", createBody)
+	cw := do(r, http.MethodPost, shortenEndpoint, createBody)
 	var createResp map[string]interface{}
 	json.Unmarshal(cw.Body.Bytes(), &createResp)
 	linkID := createResp["data"].(map[string]interface{})["id"].(string)
@@ -372,9 +381,9 @@ func TestUpdateShortLink_200(t *testing.T) {
 		"workspace_id": wsID,
 		"title":        "New Title",
 	})
-	w := do(r, http.MethodPut, "/api/v1/shorten/"+linkID, updateBody)
+	w := do(r, http.MethodPut, shortenEndpointSlash+linkID, updateBody)
 	if w.Code != http.StatusOK {
-		t.Errorf("status = %d, want %d — body: %s", w.Code, http.StatusOK, w.Body)
+		t.Errorf(statusCodeMsgWithBody, w.Code, http.StatusOK, w.Body)
 	}
 }
 
@@ -384,9 +393,9 @@ func TestUpdateShortLink_404(t *testing.T) {
 		"workspace_id": uuid.New().String(),
 		"title":        "x",
 	})
-	w := do(r, http.MethodPut, "/api/v1/shorten/"+uuid.New().String(), body)
+	w := do(r, http.MethodPut, shortenEndpointSlash+uuid.New().String(), body)
 	if w.Code != http.StatusNotFound {
-		t.Errorf("status = %d, want %d", w.Code, http.StatusNotFound)
+		t.Errorf(statusCodeMsg, w.Code, http.StatusNotFound)
 	}
 }
 
@@ -394,19 +403,19 @@ func TestDeactivateLink_204(t *testing.T) {
 	r, _ := newRouter()
 	wsID := uuid.New().String()
 	createBody := jsonBody(t, map[string]interface{}{
-		"original_url": "https://example.com",
+		"original_url": exampleURL,
 		"workspace_id": wsID,
 		"created_by":   uuid.New().String(),
 	})
-	cw := do(r, http.MethodPost, "/api/v1/shorten", createBody)
+	cw := do(r, http.MethodPost, shortenEndpoint, createBody)
 	var createResp map[string]interface{}
 	json.Unmarshal(cw.Body.Bytes(), &createResp)
 	linkID := createResp["data"].(map[string]interface{})["id"].(string)
 
 	deactivateBody := jsonBody(t, map[string]interface{}{"workspace_id": wsID})
-	w := do(r, http.MethodPost, "/api/v1/shorten/"+linkID+"/deactivate", deactivateBody)
+	w := do(r, http.MethodPost, shortenEndpointSlash+linkID+"/deactivate", deactivateBody)
 	if w.Code != http.StatusNoContent {
-		t.Errorf("status = %d, want %d — body: %s", w.Code, http.StatusNoContent, w.Body)
+		t.Errorf(statusCodeMsgWithBody, w.Code, http.StatusNoContent, w.Body)
 	}
 }
 
@@ -414,28 +423,28 @@ func TestDeleteLink_204(t *testing.T) {
 	r, _ := newRouter()
 	wsID := uuid.New().String()
 	createBody := jsonBody(t, map[string]interface{}{
-		"original_url": "https://example.com",
+		"original_url": exampleURL,
 		"workspace_id": wsID,
 		"created_by":   uuid.New().String(),
 	})
-	cw := do(r, http.MethodPost, "/api/v1/shorten", createBody)
+	cw := do(r, http.MethodPost, shortenEndpoint, createBody)
 	var createResp map[string]interface{}
 	json.Unmarshal(cw.Body.Bytes(), &createResp)
 	linkID := createResp["data"].(map[string]interface{})["id"].(string)
 
 	deleteBody := jsonBody(t, map[string]interface{}{"workspace_id": wsID})
-	w := do(r, http.MethodDelete, "/api/v1/shorten/"+linkID, deleteBody)
+	w := do(r, http.MethodDelete, shortenEndpointSlash+linkID, deleteBody)
 	if w.Code != http.StatusNoContent {
-		t.Errorf("status = %d, want %d — body: %s", w.Code, http.StatusNoContent, w.Body)
+		t.Errorf(statusCodeMsgWithBody, w.Code, http.StatusNoContent, w.Body)
 	}
 }
 
 func TestDeleteLink_404(t *testing.T) {
 	r, _ := newRouter()
 	body := jsonBody(t, map[string]interface{}{"workspace_id": uuid.New().String()})
-	w := do(r, http.MethodDelete, "/api/v1/shorten/"+uuid.New().String(), body)
+	w := do(r, http.MethodDelete, shortenEndpointSlash+uuid.New().String(), body)
 	if w.Code != http.StatusNotFound {
-		t.Errorf("status = %d, want %d", w.Code, http.StatusNotFound)
+		t.Errorf(statusCodeMsg, w.Code, http.StatusNotFound)
 	}
 }
 
@@ -443,18 +452,18 @@ func TestGetLinkStats_200(t *testing.T) {
 	r, _ := newRouter()
 	wsID := uuid.New().String()
 	createBody := jsonBody(t, map[string]interface{}{
-		"original_url": "https://example.com",
+		"original_url": exampleURL,
 		"workspace_id": wsID,
 		"created_by":   uuid.New().String(),
 	})
-	cw := do(r, http.MethodPost, "/api/v1/shorten", createBody)
+	cw := do(r, http.MethodPost, shortenEndpoint, createBody)
 	var createResp map[string]interface{}
 	json.Unmarshal(cw.Body.Bytes(), &createResp)
 	linkID := createResp["data"].(map[string]interface{})["id"].(string)
 
-	w := do(r, http.MethodGet, fmt.Sprintf("/api/v1/shorten/%s/stats?workspace_id=%s", linkID, wsID), nil)
+	w := do(r, http.MethodGet, fmt.Sprintf(shortenEndpointSlash+"%s/stats?workspace_id=%s", linkID, wsID), nil)
 	if w.Code != http.StatusOK {
-		t.Errorf("status = %d, want %d — body: %s", w.Code, http.StatusOK, w.Body)
+		t.Errorf(statusCodeMsgWithBody, w.Code, http.StatusOK, w.Body)
 	}
 }
 
@@ -463,17 +472,17 @@ func TestListLinksInWorkspace_200(t *testing.T) {
 	wsID := uuid.New().String()
 	for i := 0; i < 3; i++ {
 		body := jsonBody(t, map[string]interface{}{
-			"original_url": fmt.Sprintf("https://example%d.com", i),
+			"original_url": exampleURL,
 			"workspace_id": wsID,
 			"created_by":   uuid.New().String(),
 		})
-		do(r, http.MethodPost, "/api/v1/shorten", body)
+		do(r, http.MethodPost, shortenEndpoint, body)
 	}
 
 	// Add required pagination query parameters
-	w := do(r, http.MethodGet, "/api/v1/shorten/workspace/"+wsID+"?page=1&page_size=10", nil)
+	w := do(r, http.MethodGet, shortenEndpointSlash+"workspace/"+wsID+"?page=1&page_size=10", nil)
 	if w.Code != http.StatusOK {
-		t.Errorf("status = %d, want %d — body: %s", w.Code, http.StatusOK, w.Body)
+		t.Errorf(statusCodeMsgWithBody, w.Code, http.StatusOK, w.Body)
 		return // Early return on error to prevent panic on nil decode
 	}
 
@@ -489,15 +498,15 @@ func TestSearchByTag_200(t *testing.T) {
 	r, _ := newRouter()
 	wsID := uuid.New().String()
 	body := jsonBody(t, map[string]interface{}{
-		"original_url": "https://example.com",
+		"original_url": exampleURL,
 		"workspace_id": wsID,
 		"created_by":   uuid.New().String(),
 		"tags":         []string{"sale"},
 	})
-	do(r, http.MethodPost, "/api/v1/shorten", body)
+	do(r, http.MethodPost, shortenEndpoint, body)
 
-	w := do(r, http.MethodGet, fmt.Sprintf("/api/v1/shorten/search/tag?tag=sale&workspace_id=%s", wsID), nil)
+	w := do(r, http.MethodGet, fmt.Sprintf(shortenEndpoint+"/search/tag?tag=sale&workspace_id=%s", wsID), nil)
 	if w.Code != http.StatusOK {
-		t.Errorf("status = %d, want %d — body: %s", w.Code, http.StatusOK, w.Body)
+		t.Errorf(statusCodeMsgWithBody, w.Code, http.StatusOK, w.Body)
 	}
 }
