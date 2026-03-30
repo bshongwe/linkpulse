@@ -19,6 +19,7 @@ type ClickEvent struct {
 	UTMSource     *string   `json:"utm_source,omitempty"`
 	UTMMedium     *string   `json:"utm_medium,omitempty"`
 	UTMCampaign   *string   `json:"utm_campaign,omitempty"`
+	Origin        string    `json:"origin,omitempty"` // "direct" (from redirect) or "kafka" (from event stream)
 }
 
 // AnalyticsSummary represents aggregated analytics for a link
