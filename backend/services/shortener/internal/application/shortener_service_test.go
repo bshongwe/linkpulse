@@ -388,9 +388,16 @@ func TestGetShortLink_ExpiredLink(t *testing.T) {
 	past := time.Now().Add(-time.Second)
 	repo.links[created.ShortCode].ExpiresAt = &past
 
-	_, err := svc.GetShortLink(ctx, created.ShortCode)
-	if !sharedErrors.IsNotFound(err) {
-		t.Errorf("expected ErrNotFound for expired link, got %v", err)
+	// Service should return the expired link (handler will return 410)
+	link, err := svc.GetShortLink(ctx, created.ShortCode)
+	if err != nil {
+		t.Errorf("expected no error for expired link, got %v", err)
+	}
+	if link == nil {
+		t.Fatal("expected link to be returned, got nil")
+	}
+	if link.IsExpired() == false {
+		t.Error("expected link to be expired")
 	}
 }
 
@@ -413,7 +420,7 @@ func TestUpdateShortLink(t *testing.T) {
 	}
 }
 
-func TestUpdateShortLink_IsActivePointer(t *testing.T) {
+func TestUpdateShortLinkIsActivePointer(t *testing.T) {
 	svc, _, _ := newService()
 	ctx := context.Background()
 	workspaceID := uuid.New()
