@@ -21,4 +21,6 @@ jobs:
         with:
           go-version: '1.23'
       - run: cd backend && go mod download
+      - name: Build check
+        run: cd backend && go build ./...
       - run: cd backend && go test ./... -v
