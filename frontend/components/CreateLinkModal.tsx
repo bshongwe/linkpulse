@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import { X } from 'lucide-react';
+import { createShortLink } from '@/lib/api';
+import { getUser } from '@/lib/auth';
+import { CreateShortLinkRequest } from '@/types';
 
 interface CreateLinkModalProps {
   readonly isOpen: boolean;
@@ -12,6 +15,7 @@ interface CreateLinkModalProps {
 export default function CreateLinkModal({ isOpen, onClose, onSuccess }: Readonly<CreateLinkModalProps>) {
   const [originalUrl, setOriginalUrl] = useState('');
   const [customAlias, setCustomAlias] = useState('');
+  const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -21,38 +25,44 @@ export default function CreateLinkModal({ isOpen, onClose, onSuccess }: Readonly
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
+      const user = getUser();
+      if (!user) {
         setError('Not authenticated. Please log in again.');
         setLoading(false);
         return;
       }
 
-      const res = await fetch('http://localhost:8082/shorten', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          original_url: originalUrl,
-          custom_alias: customAlias || undefined,
-        }),
-      });
+      // Validate URL format
+      try {
+        new URL(originalUrl);
+      } catch {
+        setError('Please enter a valid URL (e.g., https://example.com)');
+        setLoading(false);
+        return;
+      }
 
-      const data = await res.json();
+      const request: CreateShortLinkRequest = {
+        original_url: originalUrl,
+        workspace_id: user.workspace_id || 'default',
+        title: title || undefined,
+        custom_alias: customAlias || undefined,
+      };
 
-      if (res.ok) {
-        onSuccess(data);
+      const result = await createShortLink(request);
+
+      if (result) {
+        onSuccess(result);
         onClose();
         setOriginalUrl('');
         setCustomAlias('');
+        setTitle('');
       } else {
-        setError(data.error || 'Failed to create link');
+        setError('Failed to create link. Please try again.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Create link error:', err);
-      setError('Failed to connect to shortener service');
+      const errorMsg = err.response?.data?.error || err.message || 'Failed to connect to shortener service';
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -94,6 +104,21 @@ export default function CreateLinkModal({ isOpen, onClose, onSuccess }: Readonly
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition-colors"
             />
             <p className="text-xs text-zinc-500 mt-1">The URL you want to shorten</p>
+          </div>
+
+          <div>
+            <label htmlFor="title" className="block text-sm font-medium text-zinc-200 mb-2">
+              Title (optional)
+            </label>
+            <input
+              id="title"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="My awesome link"
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition-colors"
+            />
+            <p className="text-xs text-zinc-500 mt-1">Helps you identify this link</p>
           </div>
 
           <div>

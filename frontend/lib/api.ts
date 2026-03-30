@@ -23,27 +23,27 @@ api.interceptors.request.use((config) => {
 
 // Shortened links
 export async function createShortLink(data: CreateShortLinkRequest): Promise<ShortLink> {
-  const response = await api.post('/shorten', data);
-  return response.data;
+  const response = await api.post('/api/v1/shorten', data);
+  return response.data.data || response.data;
 }
 
 export async function getShortLink(shortCode: string): Promise<ShortLink> {
-  const response = await api.get(`/link/${shortCode}`);
-  return response.data;
+  const response = await api.get(`/api/v1/shorten?short_code=${shortCode}`);
+  return response.data.data || response.data;
 }
 
 export async function updateShortLink(linkId: string, data: Partial<ShortLink>): Promise<ShortLink> {
-  const response = await api.put(`/link/${linkId}`, data);
-  return response.data;
+  const response = await api.put(`/api/v1/shorten/${linkId}`, data);
+  return response.data.data || response.data;
 }
 
 export async function deleteShortLink(linkId: string): Promise<void> {
-  await api.delete(`/link/${linkId}`);
+  await api.delete(`/api/v1/shorten/${linkId}`);
 }
 
 export async function listLinks(workspaceId: string): Promise<ShortLink[]> {
-  const response = await api.get(`/links?workspace_id=${workspaceId}`);
-  return response.data;
+  const response = await api.get(`/api/v1/shorten/workspace/${workspaceId}`);
+  return response.data.data || response.data || [];
 }
 
 // Analytics
