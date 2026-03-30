@@ -39,7 +39,7 @@ services:
       - "8081:8081"
     environment:
       LINKPULSE_SERVER_PORT: 8081
-      LINKPULSE_DATABASE_DSN: "postgres://postgres:password@postgres:5432/linkpulse?sslmode=disable"
+      LINKPULSE_DATABASE_DSN: "postgres://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/linkpulse?sslmode=disable"
       LINKPULSE_OTEL_ENDPOINT: "http://tempo:4317"   # will add observability later
       LINKPULSE_OTEL_SERVICE_NAME: "linkpulse-auth"
       LINKPULSE_OTEL_ENVIRONMENT: "development"
@@ -62,7 +62,7 @@ services:
       - "8082:8082"
     environment:
       LINKPULSE_SERVER_PORT: 8082
-      LINKPULSE_DATABASE_DSN: "postgres://postgres:password@postgres:5432/linkpulse?sslmode=disable"
+      LINKPULSE_DATABASE_DSN: "postgres://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/linkpulse?sslmode=disable"
       LINKPULSE_OTEL_ENDPOINT: "http://tempo:4317"
       LINKPULSE_OTEL_SERVICE_NAME: "linkpulse-shortener"
       LINKPULSE_OTEL_ENVIRONMENT: "development"
