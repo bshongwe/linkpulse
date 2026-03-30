@@ -73,10 +73,12 @@ func TestJWTValidator_ValidateAccessToken(t *testing.T) {
 	})
 
 	t.Run("wrong signing method rejected", func(t *testing.T) {
-		// Static token with RS256 alg header — validator must reject non-HMAC methods
-		// without needing a real RSA key pair.
-		rsaToken := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdCIsImV4cCI6OTk5OTk5OTk5OX0.invalidsignature"
-		_, _, err := validator.ValidateAccessToken(rsaToken)
+		// Test that tokens with non-HMAC signing methods are rejected.
+		// We construct a minimal RS256 token header without needing RSA keys.
+		// The validator should reject it before even trying to verify the signature.
+		// This token is deliberately malformed (invalid signature) for testing only.
+		malformedToken := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdCIsImV4cCI6OTk5OTk5OTk5OX0.invalidsignature"
+		_, _, err := validator.ValidateAccessToken(malformedToken)
 		if err == nil {
 			t.Fatal("expected error for wrong signing method, got nil")
 		}
