@@ -126,9 +126,9 @@ func (s *ShortenerService) getLinkFromDB(ctx context.Context, shortCode string) 
 		return nil, fmt.Errorf("failed to find short link: %w", err)
 	}
 
-	// Check if link can be accessed
-	if !link.CanAccess() {
-		return nil, sharedErrors.New(sharedErrors.ErrNotFound, "link is inactive or expired")
+	// Check if link is active (but allow expired links - handler will return 410)
+	if !link.IsActive {
+		return nil, sharedErrors.New(sharedErrors.ErrNotFound, "link is inactive")
 	}
 
 	return link, nil

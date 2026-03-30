@@ -13,27 +13,12 @@ import (
 )
 
 const (
-	errInvalidRequestPayload   = "invalid re	workspaceID, err := uuid.Parse(req.WorkspaceID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidWorkspaceID})
-		return
-	}
-	// Read link ID from path param
-	linkID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
-		return
-	}
-
-	totalClicks, err := h.service.GetLinkStats(c.Request.Context(), workspaceID, linkID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": errFailedRetrieveStats})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"total_clicks": totalClicks})
-}
-
+	errInvalidRequestPayload   = "invalid request payload"
+	errInvalidWorkspaceID      = "invalid workspace_id"
+	errLinkNotFound            = "short link not found"
+	errFailedCreateShortLink   = "failed to create short link"
+	errFailedRetrieveShortLink = "failed to retrieve short link"
+	errLinkExpired             = "short link has expired"
 	errFailedUpdateShortLink   = "failed to update short link"
 	errFailedDeactivateLink    = "failed to deactivate short link"
 	errFailedDeleteLink        = "failed to delete short link"
@@ -666,8 +651,8 @@ func (h *ShortenerHandler) ListLinksByCampaign(c *gin.Context) {
 type SearchByTagRequest struct {
 	Tag         string `form:"tag" binding:"required"`
 	WorkspaceID string `form:"workspace_id" binding:"required"`
-	Page        int    `form:"page" binding:"min=1"`
-	PageSize    int    `form:"page_size" binding:"min=1,max=100"`
+	Page        int    `form:"page"`
+	PageSize    int    `form:"page_size"`
 }
 
 // SearchByTag handles GET /shorten/search/tag requests
