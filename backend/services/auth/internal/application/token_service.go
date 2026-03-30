@@ -43,10 +43,11 @@ func NewTokenService(cfg config.JWTConfig, blacklist ports.TokenBlacklist) domai
 
 func (s *tokenService) GenerateTokenPair(user *domain.User) (*domain.TokenPair, error) {
 	accessClaims := jwt.MapClaims{
-		"user_id": user.ID,
-		"email":   user.Email,
-		"exp":     time.Now().Add(s.accessExpiry).Unix(),
-		"iat":     time.Now().Unix(),
+		"user_id":     user.ID,
+		"email":       user.Email,
+		"workspace_id": user.WorkspaceID,
+		"exp":         time.Now().Add(s.accessExpiry).Unix(),
+		"iat":         time.Now().Unix(),
 	}
 
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
