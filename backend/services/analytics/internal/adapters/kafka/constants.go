@@ -12,5 +12,6 @@ const (
 	errWrap            = "%s: %w"
 
 	// Kafka configuration
-	readTimeout = 5 * time.Second
+	readTimeout    = 5 * time.Second
+	commitInterval = 1 * time.Second // Auto-commit offset every second
 )
