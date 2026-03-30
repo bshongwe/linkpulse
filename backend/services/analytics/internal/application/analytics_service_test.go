@@ -207,6 +207,7 @@ func (m *mockEventPublisher) PublishClickEvent(ctx context.Context, event *domai
 }
 
 func (m *mockEventPublisher) Close() error {
+	// Intentionally empty: mock publisher doesn't require cleanup during testing.
 	return nil
 }
 
@@ -237,6 +238,7 @@ func (m *mockLocationService) GetCountryCode(ctx context.Context, ipAddress stri
 }
 
 func (m *mockLocationService) Close() error {
+	// Intentionally empty: mock location service doesn't require cleanup during testing.
 	return nil
 }
 
