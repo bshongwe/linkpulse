@@ -7,6 +7,7 @@ import (
 	"github.com/bshongwe/linkpulse/backend/services/shortener/internal/application"
 	"github.com/bshongwe/linkpulse/backend/services/shortener/internal/domain"
 	"github.com/bshongwe/linkpulse/backend/services/shortener/internal/ports"
+	ctxkey "github.com/bshongwe/linkpulse/backend/shared/context"
 	sharedErrors "github.com/bshongwe/linkpulse/backend/shared/errors"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -42,6 +43,19 @@ func NewShortenerHandler(service *application.ShortenerService) *ShortenerHandle
 	return &ShortenerHandler{
 		service: service,
 	}
+}
+
+// getUserIDFromContext extracts the authenticated user ID from the JWT context.
+// Returns empty string if not found (caller should use request body fallback).
+func getUserIDFromContext(c *gin.Context) string {
+	userIDStr, exists := c.Get(string(ctxkey.UserID))
+	if !exists {
+		return ""
+	}
+	if uid, ok := userIDStr.(string); ok {
+		return uid
+	}
+	return ""
 }
 
 // CreateShortLinkRequest represents the request payload for creating a short link
@@ -88,7 +102,14 @@ func (h *ShortenerHandler) CreateShortLink(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidWorkspaceID})
 		return
 	}
-	userID, err := uuid.Parse(req.CreatedBy)
+
+	// Prefer JWT context user ID, fall back to request body for backwards compatibility
+	userIDStr := getUserIDFromContext(c)
+	if userIDStr == "" {
+		userIDStr = req.CreatedBy
+	}
+
+	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidCreatedBy})
 		return
