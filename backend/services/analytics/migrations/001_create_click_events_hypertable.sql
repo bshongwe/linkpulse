@@ -1,8 +1,6 @@
 -- Create hypertable for time-series click event data
 -- This migration must be run on a PostgreSQL instance with TimescaleDB extension enabled
-
--- Ensure TimescaleDB extension is installed
-CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+-- Note: Extension is created by 000_enable_timescaledb.sql migration
 
 -- Create the click_events hypertable
 -- This table stores all click events from the shortener service
