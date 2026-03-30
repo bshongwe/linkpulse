@@ -123,6 +123,22 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: linkpulse-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_BASE: "http://localhost:8082"
+    depends_on:
+      - auth-service
+      - shortener-service
+      - analytics-service
+    restart: unless-stopped
+
   # will update this for future services (analytics, campaign, etc.)
   # shortener-service:
   #   build: ...
