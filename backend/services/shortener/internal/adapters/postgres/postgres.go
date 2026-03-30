@@ -1,7 +1,9 @@
 package postgres
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -18,7 +20,11 @@ func NewDB(cfg *config.DatabaseConfig) (*sqlx.DB, error) {
 	db.SetMaxIdleConns(cfg.MaxIdleConns)
 	db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
 
-	if err := db.Ping(); err != nil {
+	// Ping database with timeout to verify connectivity
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := db.PingContext(ctx); err != nil {
+		_ = db.Close()
 		return nil, fmt.Errorf("failed to ping postgres: %w", err)
 	}
 
