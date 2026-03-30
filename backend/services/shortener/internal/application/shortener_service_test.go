@@ -16,6 +16,10 @@ import (
 	"github.com/bshongwe/linkpulse/backend/shared/logger"
 )
 
+const (
+	errLinkNotFound = "link not found"
+)
+
 func init() {
 	// ShortenerService uses logger.Log — initialise it once for all tests.
 	logger.Init("test")
@@ -53,7 +57,7 @@ func (r *mockRepo) FindByShortCode(ctx context.Context, code string) (*domain.Sh
 	defer r.mu.Unlock()
 	l, ok := r.links[code]
 	if !ok {
-		return nil, sharedErrors.New(sharedErrors.ErrNotFound, "link not found")
+		return nil, sharedErrors.New(sharedErrors.ErrNotFound, errLinkNotFound)
 	}
 	return l, nil
 }
@@ -63,7 +67,7 @@ func (r *mockRepo) FindByID(ctx context.Context, workspaceID, linkID uuid.UUID) 
 	defer r.mu.Unlock()
 	l, ok := r.byID[linkID]
 	if !ok {
-		return nil, sharedErrors.New(sharedErrors.ErrNotFound, "link not found")
+		return nil, sharedErrors.New(sharedErrors.ErrNotFound, errLinkNotFound)
 	}
 	return l, nil
 }
@@ -86,7 +90,7 @@ func (r *mockRepo) Update(ctx context.Context, link *domain.ShortLink) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if _, ok := r.byID[link.ID]; !ok {
-		return sharedErrors.New(sharedErrors.ErrNotFound, "link not found")
+		return sharedErrors.New(sharedErrors.ErrNotFound, errLinkNotFound)
 	}
 	r.links[link.ShortCode] = link
 	r.byID[link.ID] = link
@@ -98,7 +102,7 @@ func (r *mockRepo) Deactivate(ctx context.Context, workspaceID, linkID uuid.UUID
 	defer r.mu.Unlock()
 	l, ok := r.byID[linkID]
 	if !ok {
-		return sharedErrors.New(sharedErrors.ErrNotFound, "link not found")
+		return sharedErrors.New(sharedErrors.ErrNotFound, errLinkNotFound)
 	}
 	l.IsActive = false
 	return nil
@@ -109,7 +113,7 @@ func (r *mockRepo) Delete(ctx context.Context, workspaceID, linkID uuid.UUID) er
 	defer r.mu.Unlock()
 	l, ok := r.byID[linkID]
 	if !ok {
-		return sharedErrors.New(sharedErrors.ErrNotFound, "link not found")
+		return sharedErrors.New(sharedErrors.ErrNotFound, errLinkNotFound)
 	}
 	delete(r.links, l.ShortCode)
 	delete(r.byID, linkID)
@@ -140,7 +144,7 @@ func (r *mockRepo) GetStats(ctx context.Context, workspaceID, linkID uuid.UUID) 
 	defer r.mu.Unlock()
 	l, ok := r.byID[linkID]
 	if !ok {
-		return nil, sharedErrors.New(sharedErrors.ErrNotFound, "link not found")
+		return nil, sharedErrors.New(sharedErrors.ErrNotFound, errLinkNotFound)
 	}
 	return &ports.LinkStats{
 		LinkID:     l.ID,
