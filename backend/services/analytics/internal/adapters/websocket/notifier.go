@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/bshongwe/linkpulse/backend/services/analytics/internal/domain"
+	"github.com/bshongwe/linkpulse/backend/services/analytics/internal/ports"
 )
 
 // Subscriber represents a single WebSocket subscriber
