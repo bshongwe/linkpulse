@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	stdhttp "net/http"
 	"os"
 	"os/signal"
