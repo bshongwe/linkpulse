@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 
 	"github.com/bshongwe/linkpulse/backend/services/shortener/internal/domain"
 	"github.com/bshongwe/linkpulse/backend/services/shortener/internal/ports"
@@ -64,7 +65,7 @@ func (r *LinkRepository) Create(ctx context.Context, link *domain.ShortLink) err
 		"redirect_type":   link.RedirectType,
 		"qr_code":         link.QRCode,
 		"qr_code_url":     link.QRCodeURL,
-		"tags":            link.Tags,
+		"tags":            pq.Array(link.Tags),
 		"campaign_id":     link.CampaignID,
 		"created_at":      link.CreatedAt,
 		"updated_at":      link.UpdatedAt,
@@ -192,7 +193,7 @@ func (r *LinkRepository) Update(ctx context.Context, link *domain.ShortLink) err
 		"expires_at":   link.ExpiresAt,
 		"is_active":    link.IsActive,
 		"redirect_type": link.RedirectType,
-		"tags":         link.Tags,
+		"tags":         pq.Array(link.Tags),
 		"campaign_id":  link.CampaignID,
 		"updated_at":   link.UpdatedAt,
 	})
