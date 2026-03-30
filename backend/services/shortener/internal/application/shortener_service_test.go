@@ -17,7 +17,9 @@ import (
 )
 
 const (
-	errLinkNotFound = "link not found"
+	errLinkNotFound       = "link not found"
+	exampleURL            = exampleURL
+	errUnexpectedErrorFmt = errUnexpectedErrorFmt
 )
 
 func init() {
@@ -279,15 +281,15 @@ func TestCreateShortLink_Success(t *testing.T) {
 	userID := uuid.New()
 	workspaceID := uuid.New()
 
-	link, err := svc.CreateShortLink(ctx, createReq("https://example.com"), userID, workspaceID)
+	link, err := svc.CreateShortLink(ctx, createReq(exampleURL), userID, workspaceID)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(errUnexpectedErrorFmt, err)
 	}
 	if link.ShortCode == "" {
 		t.Error("expected non-empty ShortCode")
 	}
-	if link.OriginalURL != "https://example.com" {
-		t.Errorf("OriginalURL = %q, want %q", link.OriginalURL, "https://example.com")
+	if link.OriginalURL != exampleURL {
+		t.Errorf("OriginalURL = %q, want %q", link.OriginalURL, exampleURL)
 	}
 	if link.WorkspaceID != workspaceID {
 		t.Error("WorkspaceID mismatch")
@@ -308,12 +310,12 @@ func TestCreateShortLink_Success(t *testing.T) {
 
 func TestCreateShortLink_CustomAlias(t *testing.T) {
 	svc, _, _ := newService()
-	req := createReq("https://example.com")
+	req := createReq(exampleURL)
 	req.CustomAlias = "myalias"
 
 	link, err := svc.CreateShortLink(context.Background(), req, uuid.New(), uuid.New())
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(errUnexpectedErrorFmt, err)
 	}
 	if link.ShortCode != "myalias" {
 		t.Errorf("ShortCode = %q, want %q", link.ShortCode, "myalias")
@@ -323,7 +325,7 @@ func TestCreateShortLink_CustomAlias(t *testing.T) {
 func TestCreateShortLink_DuplicateCode(t *testing.T) {
 	svc, _, _ := newService()
 	ctx := context.Background()
-	req := createReq("https://example.com")
+	req := createReq(exampleURL)
 	req.CustomAlias = "taken"
 
 	if _, err := svc.CreateShortLink(ctx, req, uuid.New(), uuid.New()); err != nil {
@@ -342,7 +344,7 @@ func TestCreateShortLink_RepoError(t *testing.T) {
 	svc, repo, _ := newService()
 	repo.failOn = "Create"
 
-	_, err := svc.CreateShortLink(context.Background(), createReq("https://example.com"), uuid.New(), uuid.New())
+	_, err := svc.CreateShortLink(context.Background(), createReq(exampleURL), uuid.New(), uuid.New())
 	if err == nil {
 		t.Fatal("expected error when repo.Create fails")
 	}
@@ -352,11 +354,11 @@ func TestGetShortLink_Found(t *testing.T) {
 	svc, _, _ := newService()
 	ctx := context.Background()
 
-	created, _ := svc.CreateShortLink(ctx, createReq("https://example.com"), uuid.New(), uuid.New())
+	created, _ := svc.CreateShortLink(ctx, createReq(exampleURL), uuid.New(), uuid.New())
 
 	got, err := svc.GetShortLink(ctx, created.ShortCode)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(errUnexpectedErrorFmt, err)
 	}
 	if got.ShortCode != created.ShortCode {
 		t.Errorf("ShortCode = %q, want %q", got.ShortCode, created.ShortCode)
@@ -375,7 +377,7 @@ func TestGetShortLink_InactiveLink(t *testing.T) {
 	svc, repo, _ := newService()
 	ctx := context.Background()
 
-	created, _ := svc.CreateShortLink(ctx, createReq("https://example.com"), uuid.New(), uuid.New())
+	created, _ := svc.CreateShortLink(ctx, createReq(exampleURL), uuid.New(), uuid.New())
 	repo.links[created.ShortCode].IsActive = false
 
 	_, err := svc.GetShortLink(ctx, created.ShortCode)
@@ -388,7 +390,7 @@ func TestGetShortLink_ExpiredLink(t *testing.T) {
 	svc, repo, _ := newService()
 	ctx := context.Background()
 
-	created, _ := svc.CreateShortLink(ctx, createReq("https://example.com"), uuid.New(), uuid.New())
+	created, _ := svc.CreateShortLink(ctx, createReq(exampleURL), uuid.New(), uuid.New())
 	past := time.Now().Add(-time.Second)
 	repo.links[created.ShortCode].ExpiresAt = &past
 
@@ -410,14 +412,14 @@ func TestUpdateShortLink(t *testing.T) {
 	ctx := context.Background()
 	workspaceID := uuid.New()
 
-	created, _ := svc.CreateShortLink(ctx, createReq("https://example.com"), uuid.New(), workspaceID)
+	created, _ := svc.CreateShortLink(ctx, createReq(exampleURL), uuid.New(), workspaceID)
 
 	newTitle := "Updated Title"
 	updated, err := svc.UpdateShortLink(ctx, workspaceID, created.ID, &domain.UpdateShortLinkRequest{
 		Title: newTitle,
 	})
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(errUnexpectedErrorFmt, err)
 	}
 	if updated.Title != newTitle {
 		t.Errorf("Title = %q, want %q", updated.Title, newTitle)
@@ -429,14 +431,14 @@ func TestUpdateShortLinkIsActivePointer(t *testing.T) {
 	ctx := context.Background()
 	workspaceID := uuid.New()
 
-	created, _ := svc.CreateShortLink(ctx, createReq("https://example.com"), uuid.New(), workspaceID)
+	created, _ := svc.CreateShortLink(ctx, createReq(exampleURL), uuid.New(), workspaceID)
 
 	f := false
 	updated, err := svc.UpdateShortLink(ctx, workspaceID, created.ID, &domain.UpdateShortLinkRequest{
 		IsActive: &f,
 	})
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(errUnexpectedErrorFmt, err)
 	}
 	if updated.IsActive {
 		t.Error("expected IsActive = false after update")
@@ -448,11 +450,11 @@ func TestDeactivateLink(t *testing.T) {
 	ctx := context.Background()
 	workspaceID := uuid.New()
 
-	created, _ := svc.CreateShortLink(ctx, createReq("https://example.com"), uuid.New(), workspaceID)
+	created, _ := svc.CreateShortLink(ctx, createReq(exampleURL), uuid.New(), workspaceID)
 	cacheKey := "short:" + created.ShortCode
 
 	if err := svc.DeactivateLink(ctx, workspaceID, created.ID); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(errUnexpectedErrorFmt, err)
 	}
 	if repo.links[created.ShortCode].IsActive {
 		t.Error("expected link to be inactive after deactivation")
@@ -468,11 +470,11 @@ func TestDeleteLink(t *testing.T) {
 	ctx := context.Background()
 	workspaceID := uuid.New()
 
-	created, _ := svc.CreateShortLink(ctx, createReq("https://example.com"), uuid.New(), workspaceID)
+	created, _ := svc.CreateShortLink(ctx, createReq(exampleURL), uuid.New(), workspaceID)
 	cacheKey := "short:" + created.ShortCode
 
 	if err := svc.DeleteLink(ctx, workspaceID, created.ID); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(errUnexpectedErrorFmt, err)
 	}
 	if _, ok := repo.byID[created.ID]; ok {
 		t.Error("expected link to be removed from repo after delete")
@@ -487,11 +489,11 @@ func TestGetLinkStats(t *testing.T) {
 	ctx := context.Background()
 	workspaceID := uuid.New()
 
-	created, _ := svc.CreateShortLink(ctx, createReq("https://example.com"), uuid.New(), workspaceID)
+	created, _ := svc.CreateShortLink(ctx, createReq(exampleURL), uuid.New(), workspaceID)
 
 	stats, err := svc.GetLinkStats(ctx, workspaceID, created.ID)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(errUnexpectedErrorFmt, err)
 	}
 	if stats.LinkID != created.ID {
 		t.Errorf("LinkID = %v, want %v", stats.LinkID, created.ID)
@@ -510,7 +512,7 @@ func TestListLinksInWorkspace(t *testing.T) {
 
 	links, total, err := svc.ListLinksInWorkspace(ctx, workspaceID, ports.ListOptions{Limit: 10})
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(errUnexpectedErrorFmt, err)
 	}
 	if total != 2 {
 		t.Errorf("total = %d, want 2", total)
@@ -525,7 +527,7 @@ func TestSearchByTag(t *testing.T) {
 	ctx := context.Background()
 	workspaceID := uuid.New()
 
-	req := createReq("https://example.com")
+	req := createReq(exampleURL)
 	req.Tags = []string{"promo", "summer"}
 	svc.CreateShortLink(ctx, req, uuid.New(), workspaceID)
 
@@ -535,7 +537,7 @@ func TestSearchByTag(t *testing.T) {
 
 	links, total, err := svc.SearchByTag(ctx, workspaceID, "promo", ports.ListOptions{Limit: 10})
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(errUnexpectedErrorFmt, err)
 	}
 	if total != 1 {
 		t.Errorf("total = %d, want 1", total)

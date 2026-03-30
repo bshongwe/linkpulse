@@ -14,6 +14,11 @@ import (
 	"github.com/bshongwe/linkpulse/backend/shared/logger"
 )
 
+const (
+	errInvalidLinkID              = "invalid link ID"
+	errExpected1RecordedClickFmt  = "expected 1 recorded click, got %d"
+)
+
 func init() {
 	// AnalyticsService uses logger.Log — initialise it once for all tests
 	logger.Init("test")
@@ -63,7 +68,7 @@ func (m *mockClickRepo) GetSummary(ctx context.Context, linkID uuid.UUID, since 
 		return nil, errors.New("mock get summary error")
 	}
 	if linkID == uuid.Nil {
-		return nil, errors.New("invalid link ID")
+		return nil, errors.New(errInvalidLinkID)
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -87,7 +92,7 @@ func (m *mockClickRepo) GetClicksByTimeRange(ctx context.Context, linkID uuid.UU
 		return nil, errors.New("mock get clicks by time range error")
 	}
 	if linkID == uuid.Nil {
-		return nil, errors.New("invalid link ID")
+		return nil, errors.New(errInvalidLinkID)
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -105,7 +110,7 @@ func (m *mockClickRepo) GetCountryDistribution(ctx context.Context, linkID uuid.
 		return nil, errors.New("mock get country distribution error")
 	}
 	if linkID == uuid.Nil {
-		return nil, errors.New("invalid link ID")
+		return nil, errors.New(errInvalidLinkID)
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -123,7 +128,7 @@ func (m *mockClickRepo) GetDeviceDistribution(ctx context.Context, linkID uuid.U
 		return nil, errors.New("mock get device distribution error")
 	}
 	if linkID == uuid.Nil {
-		return nil, errors.New("invalid link ID")
+		return nil, errors.New(errInvalidLinkID)
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -167,8 +172,11 @@ func (m *mockClickNotifier) Subscribe(linkID uuid.UUID, handler func(*domain.Cli
 	if handler == nil {
 		return nil, errors.New("handler cannot be nil")
 	}
-	// Return no-op unsubscribe function for testing
-	return func() {}, nil
+	// Return no-op unsubscribe function for testing.
+	// In unit tests, we don't need actual cleanup logic; the mock just needs to satisfy the interface.
+	return func() {
+		// Intentionally empty: mock unsubscribe doesn't require any cleanup during testing.
+	}, nil
 }
 
 // --- mock EventPublisher ---
@@ -252,7 +260,7 @@ func TestRecordClickSuccess(t *testing.T) {
 
 	// Verify click was persisted
 	if len(repo.clicks) != 1 {
-		t.Errorf("expected 1 recorded click, got %d", len(repo.clicks))
+		t.Errorf(errExpected1RecordedClickFmt, len(repo.clicks))
 	}
 
 	// Verify click was notified
@@ -408,7 +416,7 @@ func TestRecordClickNotificationFailureDoesNotFailRequest(t *testing.T) {
 
 	// But click should still be recorded
 	if len(repo.clicks) != 1 {
-		t.Errorf("expected 1 recorded click, got %d", len(repo.clicks))
+		t.Errorf(errExpected1RecordedClickFmt, len(repo.clicks))
 	}
 }
 
@@ -432,6 +440,6 @@ func TestRecordClickPublishFailureDoesNotFailRequest(t *testing.T) {
 
 	// But click should still be recorded
 	if len(repo.clicks) != 1 {
-		t.Errorf("expected 1 recorded click, got %d", len(repo.clicks))
+		t.Errorf(errExpected1RecordedClickFmt, len(repo.clicks))
 	}
 }
