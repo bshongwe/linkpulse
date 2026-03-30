@@ -8,6 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/bshongwe/linkpulse/backend/services/shortener/internal/ports"
 	"github.com/bshongwe/linkpulse/backend/shared/config"
+	sharedErrors "github.com/bshongwe/linkpulse/backend/shared/errors"
 )
 
 func NewClient(cfg *config.RedisConfig) (*redis.Client, error) {
@@ -41,6 +42,10 @@ func (c *cache) Set(ctx context.Context, key string, value interface{}, ttl time
 func (c *cache) Get(ctx context.Context, key string) (interface{}, error) {
 	val, err := c.client.Get(ctx, key).Result()
 	if err != nil {
+		// Normalize redis.Nil (key not found) to standardized ErrCacheMiss sentinel
+		if err == redis.Nil {
+			return nil, sharedErrors.ErrCacheMiss
+		}
 		return nil, err
 	}
 	return val, nil
