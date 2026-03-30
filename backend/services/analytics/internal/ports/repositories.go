@@ -65,5 +65,5 @@ type ClickNotifier interface {
 	NotifyClick(ctx context.Context, linkID uuid.UUID, event *domain.ClickEvent) error
 
 	// Subscribe registers a listener for click events on a specific link
-	Subscribe(linkID uuid.UUID, handler func(*domain.ClickEvent)) (unsubscribe func(), error)
+	Subscribe(linkID uuid.UUID, handler func(*domain.ClickEvent)) (func(), error)
 }
