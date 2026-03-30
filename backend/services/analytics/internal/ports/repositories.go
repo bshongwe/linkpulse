@@ -67,3 +67,24 @@ type ClickNotifier interface {
 	// Subscribe registers a listener for click events on a specific link
 	Subscribe(linkID uuid.UUID, handler func(*domain.ClickEvent)) (func(), error)
 }
+
+// AnalyticsService defines the interface for analytics business logic
+type AnalyticsService interface {
+	// RecordClick processes and records a click event
+	RecordClick(ctx context.Context, event *domain.ClickEvent) error
+
+	// GetAnalytics retrieves aggregated analytics for a link
+	GetAnalytics(ctx context.Context, linkID uuid.UUID, since time.Time) (*domain.AnalyticsSummary, error)
+
+	// GetLiveCount retrieves the current click count for a short code
+	GetLiveCount(ctx context.Context, shortCode string) (int64, error)
+
+	// GetCountryDistribution retrieves click distribution by country
+	GetCountryDistribution(ctx context.Context, linkID uuid.UUID) (map[string]int64, error)
+
+	// GetDeviceDistribution retrieves click distribution by device type
+	GetDeviceDistribution(ctx context.Context, linkID uuid.UUID) (map[string]int64, error)
+
+	// GetClicksByTimeRange retrieves click events within a time range
+	GetClicksByTimeRange(ctx context.Context, linkID uuid.UUID, start, end time.Time) ([]*domain.ClickEvent, error)
+}

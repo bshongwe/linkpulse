@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
+	"github.com/bshongwe/linkpulse/backend/services/analytics/internal/domain"
 	"github.com/bshongwe/linkpulse/backend/services/analytics/internal/ports"
 )
 
@@ -49,14 +50,14 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 func (h *Handler) GetSummary(c *gin.Context) {
 	linkIDStr := c.Param(linkIDParam)
 	if linkIDStr == "" {
-		h.logger.Warn("missing link ID parameter")
+		h.logger.Warn(errMissingParam)
 		c.JSON(http.StatusBadRequest, gin.H{statusKey: errMissingParam})
 		return
 	}
 
 	linkID, err := uuid.Parse(linkIDStr)
 	if err != nil {
-		h.logger.Warn("invalid link ID format", zap.String("linkID", linkIDStr), zap.Error(err))
+		h.logger.Warn(errLinkIDFormat, zap.String("linkID", linkIDStr), zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{statusKey: errInvalidUUID})
 		return
 	}
@@ -66,7 +67,7 @@ func (h *Handler) GetSummary(c *gin.Context) {
 
 	summary, err := h.analytics.GetAnalytics(c.Request.Context(), linkID, since)
 	if err != nil {
-		h.logger.Error("failed to get analytics summary", zap.String("linkID", linkID.String()), zap.Error(err))
+		h.logger.Error(errGetAnalytics, zap.String("linkID", linkID.String()), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{statusKey: errInternalServer})
 		return
 	}
@@ -87,14 +88,14 @@ func (h *Handler) GetSummary(c *gin.Context) {
 func (h *Handler) GetClicks(c *gin.Context) {
 	linkIDStr := c.Param(linkIDParam)
 	if linkIDStr == "" {
-		h.logger.Warn("missing link ID parameter")
+		h.logger.Warn(errMissingParam)
 		c.JSON(http.StatusBadRequest, gin.H{statusKey: errMissingParam})
 		return
 	}
 
 	linkID, err := uuid.Parse(linkIDStr)
 	if err != nil {
-		h.logger.Warn("invalid link ID format", zap.String("linkID", linkIDStr), zap.Error(err))
+		h.logger.Warn(errLinkIDFormat, zap.String("linkID", linkIDStr), zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{statusKey: errInvalidUUID})
 		return
 	}
@@ -105,27 +106,27 @@ func (h *Handler) GetClicks(c *gin.Context) {
 
 	start, err := time.Parse(time.RFC3339, startStr)
 	if err != nil {
-		h.logger.Warn("invalid start time format", zap.String("start", startStr), zap.Error(err))
+		h.logger.Warn(errTimeFormat, zap.String("start", startStr), zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{statusKey: errInvalidTime})
 		return
 	}
 
 	end, err := time.Parse(time.RFC3339, endStr)
 	if err != nil {
-		h.logger.Warn("invalid end time format", zap.String("end", endStr), zap.Error(err))
+		h.logger.Warn(errTimeFormat, zap.String("end", endStr), zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{statusKey: errInvalidTime})
 		return
 	}
 
 	clicks, err := h.analytics.GetClicksByTimeRange(c.Request.Context(), linkID, start, end)
 	if err != nil {
-		h.logger.Error("failed to get clicks", zap.String("linkID", linkID.String()), zap.Error(err))
+		h.logger.Error(errGetClicks, zap.String("linkID", linkID.String()), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{statusKey: errInternalServer})
 		return
 	}
 
 	if clicks == nil {
-		clicks = []*struct{}{}
+		clicks = make([]*domain.ClickEvent, 0)
 	}
 
 	c.JSON(http.StatusOK, clicks)
@@ -142,21 +143,21 @@ func (h *Handler) GetClicks(c *gin.Context) {
 func (h *Handler) GetCountryDistribution(c *gin.Context) {
 	linkIDStr := c.Param(linkIDParam)
 	if linkIDStr == "" {
-		h.logger.Warn("missing link ID parameter")
+		h.logger.Warn(errMissingParam)
 		c.JSON(http.StatusBadRequest, gin.H{statusKey: errMissingParam})
 		return
 	}
 
 	linkID, err := uuid.Parse(linkIDStr)
 	if err != nil {
-		h.logger.Warn("invalid link ID format", zap.String("linkID", linkIDStr), zap.Error(err))
+		h.logger.Warn(errLinkIDFormat, zap.String("linkID", linkIDStr), zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{statusKey: errInvalidUUID})
 		return
 	}
 
 	distribution, err := h.analytics.GetCountryDistribution(c.Request.Context(), linkID)
 	if err != nil {
-		h.logger.Error("failed to get country distribution", zap.String("linkID", linkID.String()), zap.Error(err))
+		h.logger.Error(errGetCountry, zap.String("linkID", linkID.String()), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{statusKey: errInternalServer})
 		return
 	}
@@ -179,21 +180,21 @@ func (h *Handler) GetCountryDistribution(c *gin.Context) {
 func (h *Handler) GetDeviceDistribution(c *gin.Context) {
 	linkIDStr := c.Param(linkIDParam)
 	if linkIDStr == "" {
-		h.logger.Warn("missing link ID parameter")
+		h.logger.Warn(errMissingParam)
 		c.JSON(http.StatusBadRequest, gin.H{statusKey: errMissingParam})
 		return
 	}
 
 	linkID, err := uuid.Parse(linkIDStr)
 	if err != nil {
-		h.logger.Warn("invalid link ID format", zap.String("linkID", linkIDStr), zap.Error(err))
+		h.logger.Warn(errLinkIDFormat, zap.String("linkID", linkIDStr), zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{statusKey: errInvalidUUID})
 		return
 	}
 
 	distribution, err := h.analytics.GetDeviceDistribution(c.Request.Context(), linkID)
 	if err != nil {
-		h.logger.Error("failed to get device distribution", zap.String("linkID", linkID.String()), zap.Error(err))
+		h.logger.Error(errGetDevice, zap.String("linkID", linkID.String()), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{statusKey: errInternalServer})
 		return
 	}
@@ -216,14 +217,14 @@ func (h *Handler) GetDeviceDistribution(c *gin.Context) {
 func (h *Handler) GetLiveCount(c *gin.Context) {
 	shortCode := c.Param(linkIDParam)
 	if shortCode == "" {
-		h.logger.Warn("missing short code parameter")
+		h.logger.Warn(errMissingParam)
 		c.JSON(http.StatusBadRequest, gin.H{statusKey: errMissingParam})
 		return
 	}
 
 	count, err := h.analytics.GetLiveCount(c.Request.Context(), shortCode)
 	if err != nil {
-		h.logger.Error("failed to get live count", zap.String("shortCode", shortCode), zap.Error(err))
+		h.logger.Error(errGetLiveCount, zap.String("shortCode", shortCode), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{statusKey: errInternalServer})
 		return
 	}
