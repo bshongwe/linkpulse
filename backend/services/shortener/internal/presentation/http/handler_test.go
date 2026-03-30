@@ -242,7 +242,7 @@ func do(r *gin.Engine, method, path string, body *bytes.Buffer) *httptest.Respon
 
 // ---- tests ----
 
-func TestCreateShortLink_201(t *testing.T) {
+func TestCreateShortLinkSuccess(t *testing.T) {
 	r, _ := newRouter()
 	body := jsonBody(t, map[string]interface{}{
 		"original_url": exampleURL,
@@ -262,7 +262,7 @@ func TestCreateShortLink_201(t *testing.T) {
 	}
 }
 
-func TestCreateShortLink_400_MissingURL(t *testing.T) {
+func TestCreateShortLinkMissingURL(t *testing.T) {
 	r, _ := newRouter()
 	body := jsonBody(t, map[string]interface{}{
 		"workspace_id": uuid.New().String(),
@@ -274,7 +274,7 @@ func TestCreateShortLink_400_MissingURL(t *testing.T) {
 	}
 }
 
-func TestCreateShortLink_400_InvalidWorkspaceID(t *testing.T) {
+func TestCreateShortLinkInvalidWorkspaceID(t *testing.T) {
 	r, _ := newRouter()
 	body := jsonBody(t, map[string]interface{}{
 		"original_url": exampleURL,
@@ -287,7 +287,7 @@ func TestCreateShortLink_400_InvalidWorkspaceID(t *testing.T) {
 	}
 }
 
-func TestCreateShortLink_409_DuplicateAlias(t *testing.T) {
+func TestCreateShortLinkDuplicateAlias(t *testing.T) {
 	r, _ := newRouter()
 	wsID := uuid.New().String()
 	body := func() *bytes.Buffer {
@@ -305,7 +305,7 @@ func TestCreateShortLink_409_DuplicateAlias(t *testing.T) {
 	}
 }
 
-func TestGetShortLink_200(t *testing.T) {
+func TestGetShortLinkSuccess(t *testing.T) {
 	r, _ := newRouter()
 	wsID := uuid.New().String()
 	// Create first
@@ -325,7 +325,7 @@ func TestGetShortLink_200(t *testing.T) {
 	}
 }
 
-func TestGetShortLink_404(t *testing.T) {
+func TestGetShortLinkNotFound(t *testing.T) {
 	r, _ := newRouter()
 	w := do(r, http.MethodGet, shortenEndpoint+"?short_code=doesnotexist", nil)
 	if w.Code != http.StatusNotFound {
@@ -333,7 +333,7 @@ func TestGetShortLink_404(t *testing.T) {
 	}
 }
 
-func TestGetShortLink_400_MissingParam(t *testing.T) {
+func TestGetShortLinkMissingParam(t *testing.T) {
 	r, _ := newRouter()
 	w := do(r, http.MethodGet, shortenEndpoint, nil)
 	if w.Code != http.StatusBadRequest {
@@ -341,7 +341,7 @@ func TestGetShortLink_400_MissingParam(t *testing.T) {
 	}
 }
 
-func TestGetShortLink_410_Expired(t *testing.T) {
+func TestGetShortLinkExpired(t *testing.T) {
 	r, repo := newRouter()
 	wsID := uuid.New()
 	createBody := jsonBody(t, map[string]interface{}{
@@ -364,7 +364,7 @@ func TestGetShortLink_410_Expired(t *testing.T) {
 	}
 }
 
-func TestUpdateShortLink_200(t *testing.T) {
+func TestUpdateShortLinkSuccess(t *testing.T) {
 	r, _ := newRouter()
 	wsID := uuid.New().String()
 	createBody := jsonBody(t, map[string]interface{}{
@@ -387,7 +387,7 @@ func TestUpdateShortLink_200(t *testing.T) {
 	}
 }
 
-func TestUpdateShortLink_404(t *testing.T) {
+func TestUpdateShortLinkNotFound(t *testing.T) {
 	r, _ := newRouter()
 	body := jsonBody(t, map[string]interface{}{
 		"workspace_id": uuid.New().String(),
@@ -399,7 +399,7 @@ func TestUpdateShortLink_404(t *testing.T) {
 	}
 }
 
-func TestDeactivateLink_204(t *testing.T) {
+func TestDeactivateLinkSuccess(t *testing.T) {
 	r, _ := newRouter()
 	wsID := uuid.New().String()
 	createBody := jsonBody(t, map[string]interface{}{
@@ -419,7 +419,7 @@ func TestDeactivateLink_204(t *testing.T) {
 	}
 }
 
-func TestDeleteLink_204(t *testing.T) {
+func TestDeleteLinkSuccess(t *testing.T) {
 	r, _ := newRouter()
 	wsID := uuid.New().String()
 	createBody := jsonBody(t, map[string]interface{}{
@@ -439,7 +439,7 @@ func TestDeleteLink_204(t *testing.T) {
 	}
 }
 
-func TestDeleteLink_404(t *testing.T) {
+func TestDeleteLinkNotFound(t *testing.T) {
 	r, _ := newRouter()
 	body := jsonBody(t, map[string]interface{}{"workspace_id": uuid.New().String()})
 	w := do(r, http.MethodDelete, shortenEndpointSlash+uuid.New().String(), body)
@@ -448,7 +448,7 @@ func TestDeleteLink_404(t *testing.T) {
 	}
 }
 
-func TestGetLinkStats_200(t *testing.T) {
+func TestGetLinkStatsSuccess(t *testing.T) {
 	r, _ := newRouter()
 	wsID := uuid.New().String()
 	createBody := jsonBody(t, map[string]interface{}{
@@ -467,7 +467,7 @@ func TestGetLinkStats_200(t *testing.T) {
 	}
 }
 
-func TestListLinksInWorkspace_200(t *testing.T) {
+func TestListLinksInWorkspaceSuccess(t *testing.T) {
 	r, _ := newRouter()
 	wsID := uuid.New().String()
 	for i := 0; i < 3; i++ {
@@ -494,7 +494,7 @@ func TestListLinksInWorkspace_200(t *testing.T) {
 	}
 }
 
-func TestSearchByTag_200(t *testing.T) {
+func TestSearchByTagSuccess(t *testing.T) {
 	r, _ := newRouter()
 	wsID := uuid.New().String()
 	body := jsonBody(t, map[string]interface{}{
