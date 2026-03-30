@@ -707,7 +707,7 @@ func (h *ShortenerHandler) SearchByTag(c *gin.Context) {
 }
 
 // RegisterRoutes registers all shortener routes on the given router group
-func RegisterRoutes(router *gin.Engine, handler *ShortenerHandler) {
+func RegisterRoutes(router gin.IRouter, handler *ShortenerHandler) {
 	group := router.Group("/api/v1/shorten")
 
 	group.POST("", handler.CreateShortLink)
