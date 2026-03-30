@@ -49,6 +49,16 @@ go.work
 ehthumbs.db
 Thumbs.db
 
+# Secrets & Environment
+.env
+.env.local
+.env.*.local
+.env.production
+secrets/
+*.pem
+*.key
+*.crt
+
 # Environment variables
 .env
 .env.local
