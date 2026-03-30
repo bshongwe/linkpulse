@@ -53,7 +53,7 @@ func NewAnalyticsService(
 
 // RecordClick processes and persists a click event
 func (s *AnalyticsService) RecordClick(ctx context.Context, event *domain.ClickEvent) error {
-	if !event.IsValid() {
+	if event == nil || !event.IsValid() {
 		return fmt.Errorf(errInvalidClickEvent)
 	}
 
@@ -75,6 +75,14 @@ func (s *AnalyticsService) RecordClick(ctx context.Context, event *domain.ClickE
 		if err := s.notifier.NotifyClick(ctx, event.LinkID, event); err != nil {
 			// Log but don't fail - notification is secondary
 			logger.Log.Warn("failed to notify click", zap.Error(err))
+		}
+	}
+
+	// Publish to event stream for analytics processing
+	if s.publisher != nil {
+		if err := s.publisher.PublishClickEvent(ctx, event); err != nil {
+			// Log but don't fail - event streaming is secondary
+			logger.Log.Warn("failed to publish click event", zap.Error(err))
 		}
 	}
 

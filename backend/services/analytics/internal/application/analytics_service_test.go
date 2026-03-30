@@ -1,76 +1,98 @@
-package application
+package application_test
 
 import (
 	"context"
+	"errors"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/bshongwe/linkpulse/backend/services/analytics/internal/application"
 	"github.com/bshongwe/linkpulse/backend/services/analytics/internal/domain"
+	"github.com/bshongwe/linkpulse/backend/shared/logger"
 )
 
-const (
-	errNoError            = "Expected no error, got %v"
-	errExpectedOneClick   = "Expected 1 recorded click, got %d"
-	errExpectedOneEvent   = "Expected 1 published event, got %d"
-	errExpectedNilEvent   = "Expected non-nil summary"
-	errExpectedZeroClicks = "Expected 0 total clicks, got %d"
-	errExpectedZeroCount  = "Expected 0 live count, got %d"
-	errExpectedZeroDist   = "Expected empty distribution, got %d %s"
-	errExpectedZeroEvents = "Expected 0 events, got %d"
-)
-
-// MockClickRepository mocks the ClickRepository interface
-type MockClickRepository struct {
-	recordedClicks map[string]*domain.ClickEvent
-	summary        *domain.AnalyticsSummary
+func init() {
+	// AnalyticsService uses logger.Log — initialise it once for all tests
+	logger.Init("test")
 }
 
-func NewMockClickRepository() *MockClickRepository {
-	return &MockClickRepository{
-		recordedClicks: make(map[string]*domain.ClickEvent),
+// --- mock ClickRepository ---
+
+type mockClickRepo struct {
+	mu       sync.Mutex
+	clicks   map[string]*domain.ClickEvent // keyed by click ID
+	summary  *domain.AnalyticsSummary
+	failOn   string // method name to force an error
+}
+
+func newMockClickRepo() *mockClickRepo {
+	return &mockClickRepo{
+		clicks: make(map[string]*domain.ClickEvent),
 		summary: &domain.AnalyticsSummary{
-			TotalClicks:      0,
-			ClicksLast24h:    0,
-			ClicksLast7d:     0,
-			ClicksLast30d:    0,
-			TopCountries:     make(map[string]int),
-			TopDevices:       make(map[string]int),
-			TopReferrers:     make(map[string]int),
-			TopUTMSources:    make(map[string]int),
+			TotalClicks:   0,
+			ClicksLast24h: 0,
+			ClicksLast7d:  0,
+			ClicksLast30d: 0,
+			TopCountries:  make(map[string]int64),
+			TopDevices:    make(map[string]int64),
+			TopReferrers:  make(map[string]int64),
+			TopUTMSources: make(map[string]int64),
 		},
 	}
 }
 
-func (m *MockClickRepository) RecordClick(ctx context.Context, event *domain.ClickEvent) error {
-	if event == nil {
-		return errRecordFailed
+func (m *mockClickRepo) RecordClick(ctx context.Context, event *domain.ClickEvent) error {
+	if m.failOn == "RecordClick" {
+		return errors.New("mock record click error")
 	}
-	m.recordedClicks[event.ID.String()] = event
+	if event == nil {
+		return errors.New("event cannot be nil")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.clicks[event.ID.String()] = event
 	m.summary.TotalClicks++
 	return nil
 }
 
-func (m *MockClickRepository) GetSummary(ctx context.Context, linkID uuid.UUID, since time.Time) (*domain.AnalyticsSummary, error) {
-	if linkID == uuid.Nil {
-		return nil, errGetSummaryFailed
+func (m *mockClickRepo) GetSummary(ctx context.Context, linkID uuid.UUID, since time.Time) (*domain.AnalyticsSummary, error) {
+	if m.failOn == "GetSummary" {
+		return nil, errors.New("mock get summary error")
 	}
+	if linkID == uuid.Nil {
+		return nil, errors.New("invalid link ID")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	return m.summary, nil
 }
 
-func (m *MockClickRepository) GetLiveCount(ctx context.Context, shortCode string) (int, error) {
-	if shortCode == "" {
-		return 0, errGetCountFailed
+func (m *mockClickRepo) GetLiveCount(ctx context.Context, shortCode string) (int64, error) {
+	if m.failOn == "GetLiveCount" {
+		return 0, errors.New("mock get live count error")
 	}
-	return len(m.recordedClicks), nil
+	if shortCode == "" {
+		return 0, errors.New("invalid short code")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return int64(len(m.clicks)), nil
 }
 
-func (m *MockClickRepository) GetClicksByTimeRange(ctx context.Context, linkID uuid.UUID, start, end time.Time) ([]*domain.ClickEvent, error) {
-	if linkID == uuid.Nil {
-		return nil, errGetDistribution
+func (m *mockClickRepo) GetClicksByTimeRange(ctx context.Context, linkID uuid.UUID, start, end time.Time) ([]*domain.ClickEvent, error) {
+	if m.failOn == "GetClicksByTimeRange" {
+		return nil, errors.New("mock get clicks by time range error")
 	}
+	if linkID == uuid.Nil {
+		return nil, errors.New("invalid link ID")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	var events []*domain.ClickEvent
-	for _, event := range m.recordedClicks {
+	for _, event := range m.clicks {
 		if event.LinkID == linkID && event.Timestamp.After(start) && event.Timestamp.Before(end) {
 			events = append(events, event)
 		}
@@ -78,12 +100,17 @@ func (m *MockClickRepository) GetClicksByTimeRange(ctx context.Context, linkID u
 	return events, nil
 }
 
-func (m *MockClickRepository) GetCountryDistribution(ctx context.Context, linkID uuid.UUID) (map[string]int, error) {
-	if linkID == uuid.Nil {
-		return nil, errGetDistribution
+func (m *mockClickRepo) GetCountryDistribution(ctx context.Context, linkID uuid.UUID) (map[string]int64, error) {
+	if m.failOn == "GetCountryDistribution" {
+		return nil, errors.New("mock get country distribution error")
 	}
-	dist := make(map[string]int)
-	for _, event := range m.recordedClicks {
+	if linkID == uuid.Nil {
+		return nil, errors.New("invalid link ID")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	dist := make(map[string]int64)
+	for _, event := range m.clicks {
 		if event.LinkID == linkID {
 			dist[event.CountryCode]++
 		}
@@ -91,12 +118,17 @@ func (m *MockClickRepository) GetCountryDistribution(ctx context.Context, linkID
 	return dist, nil
 }
 
-func (m *MockClickRepository) GetDeviceDistribution(ctx context.Context, linkID uuid.UUID) (map[string]int, error) {
-	if linkID == uuid.Nil {
-		return nil, errGetDistribution
+func (m *mockClickRepo) GetDeviceDistribution(ctx context.Context, linkID uuid.UUID) (map[string]int64, error) {
+	if m.failOn == "GetDeviceDistribution" {
+		return nil, errors.New("mock get device distribution error")
 	}
-	dist := make(map[string]int)
-	for _, event := range m.recordedClicks {
+	if linkID == uuid.Nil {
+		return nil, errors.New("invalid link ID")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	dist := make(map[string]int64)
+	for _, event := range m.clicks {
 		if event.LinkID == linkID {
 			dist[event.DeviceType]++
 		}
@@ -104,233 +136,302 @@ func (m *MockClickRepository) GetDeviceDistribution(ctx context.Context, linkID 
 	return dist, nil
 }
 
-// MockClickNotifier mocks the ClickNotifier interface
-type MockClickNotifier struct {
-	notifiedClicks []*domain.ClickEvent
+// --- mock ClickNotifier ---
+
+type mockClickNotifier struct {
+	mu              sync.Mutex
+	notifiedClicks  []*domain.ClickEvent
+	failOn          string
 }
 
-func NewMockClickNotifier() *MockClickNotifier {
-	return &MockClickNotifier{
+func newMockClickNotifier() *mockClickNotifier {
+	return &mockClickNotifier{
 		notifiedClicks: make([]*domain.ClickEvent, 0),
 	}
 }
 
-func (m *MockClickNotifier) NotifyClick(ctx context.Context, event *domain.ClickEvent) {
+func (m *mockClickNotifier) NotifyClick(ctx context.Context, linkID uuid.UUID, event *domain.ClickEvent) error {
+	if m.failOn == "NotifyClick" {
+		return errors.New("mock notify click error")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.notifiedClicks = append(m.notifiedClicks, event)
+	return nil
 }
 
-func (m *MockClickNotifier) Subscribe(linkID uuid.UUID, handler func(*domain.ClickEvent)) (func(), error) {
-	if handler == nil {
-		return nil, errInvalidNotifier
+func (m *mockClickNotifier) Subscribe(linkID uuid.UUID, handler func(*domain.ClickEvent)) (func(), error) {
+	if m.failOn == "Subscribe" {
+		return nil, errors.New("mock subscribe error")
 	}
-	// Return no-op unsubscribe function for mock implementation
+	if handler == nil {
+		return nil, errors.New("handler cannot be nil")
+	}
+	// Return no-op unsubscribe function for testing
 	return func() {}, nil
 }
 
-func (m *MockClickNotifier) Unsubscribe(linkID uuid.UUID) {
-	// No-op for mock implementation - test cleanup not needed
-}
+// --- mock EventPublisher ---
 
-func (m *MockClickNotifier) UnsubscribeAll(linkID uuid.UUID) {
-	// No-op for mock implementation - test cleanup not needed
-}
-
-func (m *MockClickNotifier) GetSubscriberCount(linkID uuid.UUID) int {
-	return 0
-}
-
-// MockEventPublisher mocks the EventPublisher interface
-type MockEventPublisher struct {
+type mockEventPublisher struct {
+	mu              sync.Mutex
 	publishedEvents []*domain.ClickEvent
+	failOn          string
 }
 
-func NewMockEventPublisher() *MockEventPublisher {
-	return &MockEventPublisher{
+func newMockEventPublisher() *mockEventPublisher {
+	return &mockEventPublisher{
 		publishedEvents: make([]*domain.ClickEvent, 0),
 	}
 }
 
-func (m *MockEventPublisher) PublishClickEvent(ctx context.Context, event *domain.ClickEvent) error {
-	if event == nil {
-		return errPublishFailed
+func (m *mockEventPublisher) PublishClickEvent(ctx context.Context, event *domain.ClickEvent) error {
+	if m.failOn == "PublishClickEvent" {
+		return errors.New("mock publish click event error")
 	}
+	if event == nil {
+		return errors.New("event cannot be nil")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.publishedEvents = append(m.publishedEvents, event)
 	return nil
 }
 
-func (m *MockEventPublisher) Close() error {
+func (m *mockEventPublisher) Close() error {
 	return nil
 }
 
-// MockLocationService mocks the LocationService interface
-type MockLocationService struct {
+// --- mock LocationService ---
+
+type mockLocationService struct {
+	mu          sync.Mutex
 	countryCode string
+	failOn      string
 }
 
-func NewMockLocationService(countryCode string) *MockLocationService {
-	return &MockLocationService{
+func newMockLocationService(countryCode string) *mockLocationService {
+	return &mockLocationService{
 		countryCode: countryCode,
 	}
 }
 
-func (m *MockLocationService) GetCountryCode(ctx context.Context, ipAddress string) (string, error) {
-	if ipAddress == "" {
-		return "", errLocationServiceFailed
+func (m *mockLocationService) GetCountryCode(ctx context.Context, ipAddress string) (string, error) {
+	if m.failOn == "GetCountryCode" {
+		return "", errors.New("mock get country code error")
 	}
+	if ipAddress == "" {
+		return "", errors.New("invalid IP address")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	return m.countryCode, nil
 }
 
-func (m *MockLocationService) Close() error {
+func (m *mockLocationService) Close() error {
 	return nil
 }
 
-// Test cases
+// --- Test Cases ---
 
 func TestRecordClickSuccess(t *testing.T) {
+	repo := newMockClickRepo()
+	notifier := newMockClickNotifier()
+	publisher := newMockEventPublisher()
+	location := newMockLocationService("US")
+	service := application.NewAnalyticsService(repo, notifier, publisher, location)
+
 	ctx := context.Background()
-	repo := NewMockClickRepository()
-	notifier := NewMockClickNotifier()
-	publisher := NewMockEventPublisher()
-	location := NewMockLocationService("US")
-
-	service := NewAnalyticsService(repo, notifier, publisher, location)
-
 	linkID := uuid.New()
-	event := domain.NewClickEvent(linkID, "short123", "192.168.1.1", "user-agent")
+	event := domain.NewClickEvent(linkID, "short123")
 
 	err := service.RecordClick(ctx, event)
 	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
+		t.Fatalf("RecordClick failed: %v", err)
 	}
 
-	if len(repo.recordedClicks) != 1 {
-		t.Errorf(errExpectedOneClick, len(repo.recordedClicks))
+	// Verify click was persisted
+	if len(repo.clicks) != 1 {
+		t.Errorf("expected 1 recorded click, got %d", len(repo.clicks))
 	}
 
+	// Verify click was notified
+	if len(notifier.notifiedClicks) != 1 {
+		t.Errorf("expected 1 notified click, got %d", len(notifier.notifiedClicks))
+	}
+
+	// Verify click was published
 	if len(publisher.publishedEvents) != 1 {
-		t.Errorf(errExpectedOneEvent, len(publisher.publishedEvents))
+		t.Errorf("expected 1 published event, got %d", len(publisher.publishedEvents))
 	}
 }
 
 func TestRecordClickWithNilEvent(t *testing.T) {
+	repo := newMockClickRepo()
+	notifier := newMockClickNotifier()
+	publisher := newMockEventPublisher()
+	location := newMockLocationService("US")
+	service := application.NewAnalyticsService(repo, notifier, publisher, location)
+
 	ctx := context.Background()
-	repo := NewMockClickRepository()
-	notifier := NewMockClickNotifier()
-	publisher := NewMockEventPublisher()
-	location := NewMockLocationService("US")
+	var event *domain.ClickEvent
 
-	service := NewAnalyticsService(repo, notifier, publisher, location)
-
-	err := service.RecordClick(ctx, nil)
-	if err != errInvalidEvent {
-		t.Errorf(errNoError, err)
+	err := service.RecordClick(ctx, event)
+	if err == nil {
+		t.Error("expected error for nil event, got nil")
 	}
 }
 
 func TestGetAnalyticsSummary(t *testing.T) {
+	repo := newMockClickRepo()
+	notifier := newMockClickNotifier()
+	publisher := newMockEventPublisher()
+	location := newMockLocationService("US")
+	service := application.NewAnalyticsService(repo, notifier, publisher, location)
+
 	ctx := context.Background()
-	repo := NewMockClickRepository()
-	notifier := NewMockClickNotifier()
-	publisher := NewMockEventPublisher()
-	location := NewMockLocationService("US")
-
-	service := NewAnalyticsService(repo, notifier, publisher, location)
-
 	linkID := uuid.New()
 	since := time.Now().AddDate(0, 0, -30)
 
 	summary, err := service.GetAnalytics(ctx, linkID, since)
 	if err != nil {
-		t.Errorf(errNoError, err)
+		t.Fatalf("GetAnalytics failed: %v", err)
 	}
 
 	if summary == nil {
-		t.Errorf(errExpectedNilEvent)
+		t.Error("expected non-nil summary")
 	}
 
 	if summary.TotalClicks != 0 {
-		t.Errorf(errExpectedZeroClicks, summary.TotalClicks)
+		t.Errorf("expected 0 total clicks, got %d", summary.TotalClicks)
 	}
 }
 
 func TestGetLiveCount(t *testing.T) {
-	ctx := context.Background()
-	repo := NewMockClickRepository()
-	notifier := NewMockClickNotifier()
-	publisher := NewMockEventPublisher()
-	location := NewMockLocationService("US")
+	repo := newMockClickRepo()
+	notifier := newMockClickNotifier()
+	publisher := newMockEventPublisher()
+	location := newMockLocationService("US")
+	service := application.NewAnalyticsService(repo, notifier, publisher, location)
 
-	service := NewAnalyticsService(repo, notifier, publisher, location)
+	ctx := context.Background()
 
 	count, err := service.GetLiveCount(ctx, "short123")
 	if err != nil {
-		t.Errorf(errNoError, err)
+		t.Fatalf("GetLiveCount failed: %v", err)
 	}
 
 	if count != 0 {
-		t.Errorf(errExpectedZeroCount, count)
+		t.Errorf("expected 0 live count, got %d", count)
 	}
 }
 
 func TestGetCountryDistribution(t *testing.T) {
+	repo := newMockClickRepo()
+	notifier := newMockClickNotifier()
+	publisher := newMockEventPublisher()
+	location := newMockLocationService("US")
+	service := application.NewAnalyticsService(repo, notifier, publisher, location)
+
 	ctx := context.Background()
-	repo := NewMockClickRepository()
-	notifier := NewMockClickNotifier()
-	publisher := NewMockEventPublisher()
-	location := NewMockLocationService("US")
-
-	service := NewAnalyticsService(repo, notifier, publisher, location)
-
 	linkID := uuid.New()
+
 	dist, err := service.GetCountryDistribution(ctx, linkID)
 	if err != nil {
-		t.Errorf(errNoError, err)
+		t.Fatalf("GetCountryDistribution failed: %v", err)
 	}
 
 	if len(dist) != 0 {
-		t.Errorf(errExpectedZeroDist, len(dist), "countries")
+		t.Errorf("expected empty distribution, got %d countries", len(dist))
 	}
 }
 
 func TestGetDeviceDistribution(t *testing.T) {
+	repo := newMockClickRepo()
+	notifier := newMockClickNotifier()
+	publisher := newMockEventPublisher()
+	location := newMockLocationService("US")
+	service := application.NewAnalyticsService(repo, notifier, publisher, location)
+
 	ctx := context.Background()
-	repo := NewMockClickRepository()
-	notifier := NewMockClickNotifier()
-	publisher := NewMockEventPublisher()
-	location := NewMockLocationService("US")
-
-	service := NewAnalyticsService(repo, notifier, publisher, location)
-
 	linkID := uuid.New()
+
 	dist, err := service.GetDeviceDistribution(ctx, linkID)
 	if err != nil {
-		t.Errorf(errNoError, err)
+		t.Fatalf("GetDeviceDistribution failed: %v", err)
 	}
 
 	if len(dist) != 0 {
-		t.Errorf(errExpectedZeroDist, len(dist), "devices")
+		t.Errorf("expected empty distribution, got %d devices", len(dist))
 	}
 }
 
 func TestGetClicksByTimeRange(t *testing.T) {
+	repo := newMockClickRepo()
+	notifier := newMockClickNotifier()
+	publisher := newMockEventPublisher()
+	location := newMockLocationService("US")
+	service := application.NewAnalyticsService(repo, notifier, publisher, location)
+
 	ctx := context.Background()
-	repo := NewMockClickRepository()
-	notifier := NewMockClickNotifier()
-	publisher := NewMockEventPublisher()
-	location := NewMockLocationService("US")
-
-	service := NewAnalyticsService(repo, notifier, publisher, location)
-
 	linkID := uuid.New()
 	start := time.Now().AddDate(0, 0, -7)
 	end := time.Now()
 
 	events, err := service.GetClicksByTimeRange(ctx, linkID, start, end)
 	if err != nil {
-		t.Errorf(errNoError, err)
+		t.Fatalf("GetClicksByTimeRange failed: %v", err)
 	}
 
 	if len(events) != 0 {
-		t.Errorf(errExpectedZeroEvents, len(events))
+		t.Errorf("expected 0 events, got %d", len(events))
+	}
+}
+
+func TestRecordClickNotificationFailureDoesNotFailRequest(t *testing.T) {
+	repo := newMockClickRepo()
+	notifier := newMockClickNotifier()
+	notifier.failOn = "NotifyClick"
+	publisher := newMockEventPublisher()
+	location := newMockLocationService("US")
+	service := application.NewAnalyticsService(repo, notifier, publisher, location)
+
+	ctx := context.Background()
+	linkID := uuid.New()
+	event := domain.NewClickEvent(linkID, "short123")
+
+	err := service.RecordClick(ctx, event)
+	// Notification failure should not cause RecordClick to fail
+	if err != nil {
+		t.Fatalf("RecordClick should not fail when NotifyClick fails, got: %v", err)
+	}
+
+	// But click should still be recorded
+	if len(repo.clicks) != 1 {
+		t.Errorf("expected 1 recorded click, got %d", len(repo.clicks))
+	}
+}
+
+func TestRecordClickPublishFailureDoesNotFailRequest(t *testing.T) {
+	repo := newMockClickRepo()
+	notifier := newMockClickNotifier()
+	publisher := newMockEventPublisher()
+	publisher.failOn = "PublishClickEvent"
+	location := newMockLocationService("US")
+	service := application.NewAnalyticsService(repo, notifier, publisher, location)
+
+	ctx := context.Background()
+	linkID := uuid.New()
+	event := domain.NewClickEvent(linkID, "short123")
+
+	err := service.RecordClick(ctx, event)
+	// Publish failure should not cause RecordClick to fail
+	if err != nil {
+		t.Fatalf("RecordClick should not fail when PublishClickEvent fails, got: %v", err)
+	}
+
+	// But click should still be recorded
+	if len(repo.clicks) != 1 {
+		t.Errorf("expected 1 recorded click, got %d", len(repo.clicks))
 	}
 }
