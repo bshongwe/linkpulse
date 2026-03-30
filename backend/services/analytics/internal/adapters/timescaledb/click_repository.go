@@ -150,6 +150,10 @@ func (r *ClickRepository) populateTopValues(ctx context.Context, linkID uuid.UUI
 		target[key] = count
 	}
 
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf(errWrap, "failed to query top "+column, err)
+	}
+
 	return nil
 }
 
@@ -219,14 +223,22 @@ func (r *ClickRepository) GetClicksByTimeRange(ctx context.Context, linkID uuid.
 	var clicks []*domain.ClickEvent
 	for rows.Next() {
 		event := &domain.ClickEvent{}
+		var ipHash *string
 		if err := rows.Scan(
 			&event.ID, &event.LinkID, &event.ShortCode, &event.Timestamp,
-			&event.IPAddressHash, &event.CountryCode, &event.DeviceType,
+			&ipHash, &event.CountryCode, &event.DeviceType,
 			&event.Referrer, &event.UTMSource, &event.UTMMedium, &event.UTMCampaign,
 		); err != nil {
 			return nil, fmt.Errorf(errWrap, errScanFailed, err)
 		}
+		if ipHash != nil {
+			event.IPAddressHash = *ipHash
+		}
 		clicks = append(clicks, event)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf(errWrap, errGetDistribution, err)
 	}
 
 	return clicks, nil
@@ -256,6 +268,10 @@ func (r *ClickRepository) GetCountryDistribution(ctx context.Context, linkID uui
 		distribution[code] = count
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf(errWrap, errGetDistribution, err)
+	}
+
 	return distribution, nil
 }
 
@@ -281,6 +297,10 @@ func (r *ClickRepository) GetDeviceDistribution(ctx context.Context, linkID uuid
 			return nil, fmt.Errorf(errWrap, errScanFailed, err)
 		}
 		distribution[dtype] = count
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf(errWrap, errGetDistribution, err)
 	}
 
 	return distribution, nil
