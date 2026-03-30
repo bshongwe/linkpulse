@@ -78,8 +78,9 @@ func (s *AnalyticsService) RecordClick(ctx context.Context, event *domain.ClickE
 		}
 	}
 
-	// Publish to event stream for analytics processing
-	if s.publisher != nil {
+	// Publish to event stream only if event originated from direct redirect, not from broker
+	// This prevents republishing loop when consumer processes its own published events
+	if s.publisher != nil && event.Origin != "kafka" {
 		if err := s.publisher.PublishClickEvent(ctx, event); err != nil {
 			// Log but don't fail - event streaming is secondary
 			logger.Log.Warn("failed to publish click event", zap.Error(err))
