@@ -9,14 +9,13 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/bshongwe/linkpulse/backend/services/analytics/internal/domain"
-	"github.com/bshongwe/linkpulse/backend/services/analytics/internal/ports"
 )
 
 // Subscriber represents a single WebSocket subscriber
 type Subscriber struct {
 	id      string
 	linkID  uuid.UUID
-	handler ports.EventHandler
+	handler func(*domain.ClickEvent)
 	done    chan struct{}
 }
 
@@ -56,13 +55,7 @@ func (cn *ClickNotifier) NotifyClick(ctx context.Context, linkID uuid.UUID, even
 				// Context cancelled
 				return
 			default:
-				if err := s.handler(ctx, event); err != nil {
-					cn.logger.Error("failed to notify subscriber",
-						zap.String("subscriberID", s.id),
-						zap.String("linkID", linkID.String()),
-						zap.Error(err),
-					)
-				}
+				s.handler(event)
 			}
 		}(sub)
 	}
@@ -71,7 +64,7 @@ func (cn *ClickNotifier) NotifyClick(ctx context.Context, linkID uuid.UUID, even
 }
 
 // Subscribe registers a listener for click events on a specific link
-func (cn *ClickNotifier) Subscribe(linkID uuid.UUID, handler ports.EventHandler) (func(), error) {
+func (cn *ClickNotifier) Subscribe(linkID uuid.UUID, handler func(*domain.ClickEvent)) (func(), error) {
 	if handler == nil {
 		return nil, fmt.Errorf(errWrap, errInvalidHandler, fmt.Errorf("handler cannot be nil"))
 	}
