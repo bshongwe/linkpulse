@@ -13,12 +13,12 @@ type ClickEvent struct {
 	ShortCode     string    `json:"short_code"`
 	Timestamp     time.Time `json:"timestamp"`
 	IPAddressHash string    `json:"ip_hash"`        // anonymized
-	CountryCode   string    `json:"country_code,omitempty"`
-	DeviceType    string    `json:"device_type,omitempty"`
-	Referrer      string    `json:"referrer,omitempty"`
-	UTMSource     string    `json:"utm_source,omitempty"`
-	UTMMedium     string    `json:"utm_medium,omitempty"`
-	UTMCampaign   string    `json:"utm_campaign,omitempty"`
+	CountryCode   *string   `json:"country_code,omitempty"`
+	DeviceType    *string   `json:"device_type,omitempty"`
+	Referrer      *string   `json:"referrer,omitempty"`
+	UTMSource     *string   `json:"utm_source,omitempty"`
+	UTMMedium     *string   `json:"utm_medium,omitempty"`
+	UTMCampaign   *string   `json:"utm_campaign,omitempty"`
 }
 
 // AnalyticsSummary represents aggregated analytics for a link
