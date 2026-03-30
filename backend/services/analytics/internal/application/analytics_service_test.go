@@ -111,8 +111,8 @@ func (m *mockClickRepo) GetCountryDistribution(ctx context.Context, linkID uuid.
 	defer m.mu.Unlock()
 	dist := make(map[string]int64)
 	for _, event := range m.clicks {
-		if event.LinkID == linkID {
-			dist[event.CountryCode]++
+		if event.LinkID == linkID && event.CountryCode != nil {
+			dist[*event.CountryCode]++
 		}
 	}
 	return dist, nil
@@ -129,8 +129,8 @@ func (m *mockClickRepo) GetDeviceDistribution(ctx context.Context, linkID uuid.U
 	defer m.mu.Unlock()
 	dist := make(map[string]int64)
 	for _, event := range m.clicks {
-		if event.LinkID == linkID {
-			dist[event.DeviceType]++
+		if event.LinkID == linkID && event.DeviceType != nil {
+			dist[*event.DeviceType]++
 		}
 	}
 	return dist, nil
