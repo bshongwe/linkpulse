@@ -86,12 +86,12 @@ func (s *tokenService) ValidateAccessToken(tokenStr string) (*domain.Claims, err
 	})
 
 	if err != nil || !token.Valid {
-		return nil, errors.New(errors.ErrUnauthorized, "invalid or expired token")
+		return nil, errors.New(errors.ErrUnauthorized, errInvalidOrExpiredToken)
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return nil, errors.New(errors.ErrUnauthorized, "invalid claims")
+		return nil, errors.New(errors.ErrUnauthorized, errInvalidClaims)
 	}
 
 	userID, err := uuid.Parse(claims["user_id"].(string))
@@ -114,32 +114,32 @@ func (s *tokenService) RefreshTokens(ctx context.Context, refreshTokenStr string
 		return s.refreshSecret, nil
 	})
 	if err != nil || !token.Valid {
-		return nil, errors.New(errors.ErrUnauthorized, "invalid refresh token")
+		return nil, errors.New(errors.ErrUnauthorized, errInvalidRefreshToken)
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return nil, errors.New(errors.ErrUnauthorized, "invalid claims")
+		return nil, errors.New(errors.ErrUnauthorized, errInvalidClaims)
 	}
 
 	jti, ok := claims["jti"].(string)
 	if !ok || jti == "" {
-		return nil, errors.New(errors.ErrUnauthorized, "missing token id")
+		return nil, errors.New(errors.ErrUnauthorized, errMissingTokenID)
 	}
 
 	// Blacklist check — reject revoked tokens (e.g. after logout)
 	revoked, err := s.blacklist.IsRevoked(ctx, jti)
 	if err != nil || revoked {
-		return nil, errors.New(errors.ErrUnauthorized, "token has been revoked")
+		return nil, errors.New(errors.ErrUnauthorized, errTokenRevoked)
 	}
 
 	userID, ok := claims["user_id"].(string)
 	if !ok {
-		return nil, errors.New(errors.ErrUnauthorized, "invalid user_id claim")
+		return nil, errors.New(errors.ErrUnauthorized, errInvalidUserIDClaim)
 	}
 	email, ok := claims["email"].(string)
 	if !ok {
-		return nil, errors.New(errors.ErrUnauthorized, "invalid email claim")
+		return nil, errors.New(errors.ErrUnauthorized, errInvalidEmailClaim)
 	}
 
 	user := &domain.User{
@@ -158,17 +158,17 @@ func (s *tokenService) RevokeRefreshToken(ctx context.Context, refreshTokenStr s
 		return s.refreshSecret, nil
 	})
 	if err != nil || !token.Valid {
-		return errors.New(errors.ErrUnauthorized, "invalid refresh token")
+		return errors.New(errors.ErrUnauthorized, errInvalidRefreshToken)
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return errors.New(errors.ErrUnauthorized, "invalid claims")
+		return errors.New(errors.ErrUnauthorized, errInvalidClaims)
 	}
 
 	jti, ok := claims["jti"].(string)
 	if !ok || jti == "" {
-		return errors.New(errors.ErrUnauthorized, "missing token id")
+		return errors.New(errors.ErrUnauthorized, errMissingTokenID)
 	}
 
 	// TTL = remaining lifetime of the token so the blacklist entry auto-expires
