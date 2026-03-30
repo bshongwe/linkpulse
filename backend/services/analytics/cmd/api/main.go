@@ -17,6 +17,7 @@ import (
 	"github.com/bshongwe/linkpulse/backend/services/analytics/internal/adapters/timescaledb"
 	"github.com/bshongwe/linkpulse/backend/services/analytics/internal/adapters/websocket"
 	"github.com/bshongwe/linkpulse/backend/services/analytics/internal/application"
+	"github.com/bshongwe/linkpulse/backend/services/analytics/internal/domain"
 	httphandler "github.com/bshongwe/linkpulse/backend/services/analytics/internal/presentation/http"
 	"github.com/bshongwe/linkpulse/backend/shared/logger"
 )
@@ -75,7 +76,7 @@ func main() {
 	)
 
 	// Register Kafka consumer handlers
-	eventConsumer.RegisterHandler(func(ctx context.Context, event *application.ClickEvent) error {
+	eventConsumer.RegisterHandler(func(ctx context.Context, event *domain.ClickEvent) error {
 		return analyticsService.RecordClick(ctx, event)
 	})
 
