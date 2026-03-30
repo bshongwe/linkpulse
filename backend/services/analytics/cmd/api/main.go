@@ -28,9 +28,10 @@ func main() {
 	log := logger.Log
 
 	// Database configuration from environment
-	dbURL := fmt.Sprintf(
-		"postgres://linkpulse:password@localhost:5432/linkpulse?sslmode=disable",
-	)
+	dbURL := os.Getenv("LINKPULSE_DATABASE_DSN")
+	if dbURL == "" {
+		dbURL = "postgres://linkpulse:password@localhost:5432/linkpulse?sslmode=disable"
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -52,7 +53,11 @@ func main() {
 	clickRepo := timescaledb.NewClickRepository(pool)
 	log.Info("initialized TimescaleDB click repository")
 
-	kafkaBrokers := []string{"localhost:9092"}
+	kafkaBroker := os.Getenv("KAFKA_BROKER")
+	if kafkaBroker == "" {
+		kafkaBroker = "localhost:9092"
+	}
+	kafkaBrokers := []string{kafkaBroker}
 	eventPublisher, err := kafka.NewEventPublisher(kafkaBrokers, "click-events", log)
 	if err != nil {
 		log.Fatal("failed to create Kafka publisher", zap.Error(err))
