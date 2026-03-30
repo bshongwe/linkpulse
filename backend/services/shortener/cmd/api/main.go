@@ -68,6 +68,9 @@ func main() {
 	shutdownOtel, err := otel.Init(ctx, &cfg.OTel)
 	if err != nil {
 		logger.Log.Error("Failed to init OpenTelemetry", zap.Error(err))
+		// Provide a no-op cleanup function when OTel initialization fails
+		// to prevent panic in the deferred cleanup call
+		shutdownOtel = func() { /* nothing to cleanup */ }
 	}
 	defer shutdownOtel()
 
