@@ -1,3 +1,7 @@
+// Package middleware_test contains tests for authentication middleware.
+// Note: JWT tokens generated in this file are test-only and dynamically constructed via makeToken().
+// They are not real secrets and should not be treated as such by secret scanning tools.
+// See .gitguardian.yaml for secret scanning exceptions.
 package middleware_test
 
 import (
