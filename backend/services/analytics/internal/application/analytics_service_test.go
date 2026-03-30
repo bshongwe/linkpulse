@@ -14,6 +14,13 @@ import (
 	"github.com/bshongwe/linkpulse/backend/shared/logger"
 )
 
+const (
+	errInvalidLinkID              = "invalid link ID"
+	errExpected1RecordedClickFmt  = "expected 1 recorded click, got %d"
+	errExpected1NotifiedClickFmt  = "expected 1 notified click, got %d"
+	errExpected1PublishedEventFmt = "expected 1 published event, got %d"
+)
+
 func init() {
 	// AnalyticsService uses logger.Log — initialise it once for all tests
 	logger.Init("test")
@@ -63,7 +70,7 @@ func (m *mockClickRepo) GetSummary(ctx context.Context, linkID uuid.UUID, since 
 		return nil, errors.New("mock get summary error")
 	}
 	if linkID == uuid.Nil {
-		return nil, errors.New("invalid link ID")
+		return nil, errors.New(errInvalidLinkID)
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -87,7 +94,7 @@ func (m *mockClickRepo) GetClicksByTimeRange(ctx context.Context, linkID uuid.UU
 		return nil, errors.New("mock get clicks by time range error")
 	}
 	if linkID == uuid.Nil {
-		return nil, errors.New("invalid link ID")
+		return nil, errors.New(errInvalidLinkID)
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -105,7 +112,7 @@ func (m *mockClickRepo) GetCountryDistribution(ctx context.Context, linkID uuid.
 		return nil, errors.New("mock get country distribution error")
 	}
 	if linkID == uuid.Nil {
-		return nil, errors.New("invalid link ID")
+		return nil, errors.New(errInvalidLinkID)
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -123,7 +130,7 @@ func (m *mockClickRepo) GetDeviceDistribution(ctx context.Context, linkID uuid.U
 		return nil, errors.New("mock get device distribution error")
 	}
 	if linkID == uuid.Nil {
-		return nil, errors.New("invalid link ID")
+		return nil, errors.New(errInvalidLinkID)
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -167,8 +174,10 @@ func (m *mockClickNotifier) Subscribe(linkID uuid.UUID, handler func(*domain.Cli
 	if handler == nil {
 		return nil, errors.New("handler cannot be nil")
 	}
-	// Return no-op unsubscribe function for testing
-	return func() {}, nil
+	// no-op unsubscribe for tests
+	return func() {
+		// no-op for mock
+	}, nil
 }
 
 // --- mock EventPublisher ---
@@ -199,6 +208,7 @@ func (m *mockEventPublisher) PublishClickEvent(ctx context.Context, event *domai
 }
 
 func (m *mockEventPublisher) Close() error {
+	// no-op for mock
 	return nil
 }
 
@@ -229,6 +239,7 @@ func (m *mockLocationService) GetCountryCode(ctx context.Context, ipAddress stri
 }
 
 func (m *mockLocationService) Close() error {
+	// no-op for mock
 	return nil
 }
 
@@ -252,17 +263,17 @@ func TestRecordClickSuccess(t *testing.T) {
 
 	// Verify click was persisted
 	if len(repo.clicks) != 1 {
-		t.Errorf("expected 1 recorded click, got %d", len(repo.clicks))
+		t.Errorf(errExpected1RecordedClickFmt, len(repo.clicks))
 	}
 
 	// Verify click was notified
 	if len(notifier.notifiedClicks) != 1 {
-		t.Errorf("expected 1 notified click, got %d", len(notifier.notifiedClicks))
+		t.Errorf(errExpected1NotifiedClickFmt, len(notifier.notifiedClicks))
 	}
 
 	// Verify click was published
 	if len(publisher.publishedEvents) != 1 {
-		t.Errorf("expected 1 published event, got %d", len(publisher.publishedEvents))
+		t.Errorf(errExpected1PublishedEventFmt, len(publisher.publishedEvents))
 	}
 }
 
@@ -408,7 +419,7 @@ func TestRecordClickNotificationFailureDoesNotFailRequest(t *testing.T) {
 
 	// But click should still be recorded
 	if len(repo.clicks) != 1 {
-		t.Errorf("expected 1 recorded click, got %d", len(repo.clicks))
+		t.Errorf(errExpected1RecordedClickFmt, len(repo.clicks))
 	}
 }
 
@@ -432,6 +443,6 @@ func TestRecordClickPublishFailureDoesNotFailRequest(t *testing.T) {
 
 	// But click should still be recorded
 	if len(repo.clicks) != 1 {
-		t.Errorf("expected 1 recorded click, got %d", len(repo.clicks))
+		t.Errorf(errExpected1RecordedClickFmt, len(repo.clicks))
 	}
 }
