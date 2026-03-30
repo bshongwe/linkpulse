@@ -119,21 +119,19 @@ func (ec *EventConsumer) consume(ctx context.Context) {
 	}
 }
 
-// handleEvent processes a click event with all registered handlers
+// handleEvent processes a click event with all registered handlers synchronously
+// This prevents unbounded goroutine creation and maintains backpressure
 func (ec *EventConsumer) handleEvent(ctx context.Context, event *domain.ClickEvent) {
 	ec.mu.RLock()
 	handlers := ec.handlers
 	ec.mu.RUnlock()
 
 	for _, handler := range handlers {
-		// Run handler in a goroutine to prevent blocking the consumer
-		go func(h ports.EventHandler) {
-			if err := h(ctx, event); err != nil {
-				ec.logger.Error("event handler failed",
-					zap.Error(err),
-					zap.String("linkID", event.LinkID.String()),
-				)
-			}
-		}(handler)
+		if err := handler(ctx, event); err != nil {
+			ec.logger.Error("event handler failed",
+				zap.Error(err),
+				zap.String("linkID", event.LinkID.String()),
+			)
+		}
 	}
 }
