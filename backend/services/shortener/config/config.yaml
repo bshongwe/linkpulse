@@ -3,7 +3,7 @@ server:
   graceful_shutdown: 30s
 
 database:
-  dsn: postgres://postgres:password@postgres:5432/linkpulse?sslmode=disable
+  dsn: ${LINKPULSE_DATABASE_DSN}
   max_open_conns: 25
   max_idle_conns: 5
   conn_max_lifetime: 5m
@@ -19,5 +19,6 @@ otel:
   environment: development
 
 jwt:
-  access_secret: dev-secret-access
-  refresh_secret: dev-secret-refresh
+  access_secret: ${LINKPULSE_JWT_ACCESS_SECRET}
+  refresh_secret: ${LINKPULSE_JWT_REFRESH_SECRET}
+
