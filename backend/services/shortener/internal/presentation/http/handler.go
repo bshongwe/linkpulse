@@ -62,7 +62,7 @@ func getUserIDFromContext(c *gin.Context) string {
 type CreateShortLinkRequest struct {
 	OriginalURL  string   `json:"original_url" binding:"required,url"`
 	WorkspaceID  string   `json:"workspace_id" binding:"required"`
-	CreatedBy    string   `json:"created_by" binding:"required"`
+	CreatedBy    string   `json:"created_by"`
 	Title        string   `json:"title"`
 	Description  string   `json:"description"`
 	CustomAlias  string   `json:"custom_alias"`

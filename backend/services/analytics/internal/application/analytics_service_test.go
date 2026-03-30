@@ -17,6 +17,8 @@ import (
 const (
 	errInvalidLinkID              = "invalid link ID"
 	errExpected1RecordedClickFmt  = "expected 1 recorded click, got %d"
+	errExpected1NotifiedClickFmt  = "expected 1 notified click, got %d"
+	errExpected1PublishedEventFmt = "expected 1 published event, got %d"
 )
 
 func init() {
@@ -172,10 +174,9 @@ func (m *mockClickNotifier) Subscribe(linkID uuid.UUID, handler func(*domain.Cli
 	if handler == nil {
 		return nil, errors.New("handler cannot be nil")
 	}
-	// Return no-op unsubscribe function for testing.
-	// In unit tests, we don't need actual cleanup logic; the mock just needs to satisfy the interface.
+	// no-op unsubscribe for tests
 	return func() {
-		// Intentionally empty: mock unsubscribe doesn't require any cleanup during testing.
+		// no-op for mock
 	}, nil
 }
 
@@ -207,7 +208,7 @@ func (m *mockEventPublisher) PublishClickEvent(ctx context.Context, event *domai
 }
 
 func (m *mockEventPublisher) Close() error {
-	// Intentionally empty: mock publisher doesn't require cleanup during testing.
+	// no-op for mock
 	return nil
 }
 
@@ -238,7 +239,7 @@ func (m *mockLocationService) GetCountryCode(ctx context.Context, ipAddress stri
 }
 
 func (m *mockLocationService) Close() error {
-	// Intentionally empty: mock location service doesn't require cleanup during testing.
+	// no-op for mock
 	return nil
 }
 
@@ -267,12 +268,12 @@ func TestRecordClickSuccess(t *testing.T) {
 
 	// Verify click was notified
 	if len(notifier.notifiedClicks) != 1 {
-		t.Errorf("expected 1 notified click, got %d", len(notifier.notifiedClicks))
+		t.Errorf(errExpected1NotifiedClickFmt, len(notifier.notifiedClicks))
 	}
 
 	// Verify click was published
 	if len(publisher.publishedEvents) != 1 {
-		t.Errorf("expected 1 published event, got %d", len(publisher.publishedEvents))
+		t.Errorf(errExpected1PublishedEventFmt, len(publisher.publishedEvents))
 	}
 }
 
