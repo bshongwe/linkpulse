@@ -70,7 +70,16 @@ func (v *JWTValidator) ValidateAccessToken(tokenStr string) (string, string, err
 		return "", "", sharedErrors.New(sharedErrors.ErrUnauthorized, "invalid claims")
 	}
 
-	userID, _ := claims["user_id"].(string)
-	email, _ := claims["email"].(string)
+	// Validate that both user_id and email are present and non-empty
+	userID, ok := claims["user_id"].(string)
+	if !ok || userID == "" {
+		return "", "", sharedErrors.New(sharedErrors.ErrUnauthorized, "missing or invalid user_id claim")
+	}
+
+	email, ok := claims["email"].(string)
+	if !ok || email == "" {
+		return "", "", sharedErrors.New(sharedErrors.ErrUnauthorized, "missing or invalid email claim")
+	}
+
 	return userID, email, nil
 }
