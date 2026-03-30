@@ -38,6 +38,7 @@ func (r *ClickRepository) RecordClick(ctx context.Context, event *domain.ClickEv
 	id := event.ID
 	if id == uuid.Nil {
 		id = uuid.New()
+		event.ID = id // Persist the generated UUID back to the event for downstream consumers
 	}
 
 	query := `INSERT INTO click_events (id, time, link_id, short_code, ip_hash, country_code, device_type, referrer, utm_source, utm_medium, utm_campaign)
