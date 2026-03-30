@@ -86,13 +86,13 @@ func (s *AnalyticsService) RecordClick(ctx context.Context, event *domain.ClickE
 }
 
 // GetAnalytics retrieves comprehensive analytics for a link
-func (s *AnalyticsService) GetAnalytics(ctx context.Context, linkID uuid.UUID) (*domain.AnalyticsSummary, error) {
+func (s *AnalyticsService) GetAnalytics(ctx context.Context, linkID uuid.UUID, since time.Time) (*domain.AnalyticsSummary, error) {
 	if linkID == uuid.Nil {
 		return nil, fmt.Errorf(errInvalidLinkID)
 	}
 
-	// Get summary for last 30 days
-	summary, err := s.clickRepo.GetSummary(ctx, linkID, time.Now().UTC().Add(-30*24*time.Hour))
+	// Get summary from the specified time period
+	summary, err := s.clickRepo.GetSummary(ctx, linkID, since)
 	if err != nil {
 		logger.Log.Error(errGetSummary, zap.Error(err))
 		return nil, fmt.Errorf(errWrap, errGetAnalytics, err)
