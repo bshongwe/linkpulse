@@ -7,9 +7,12 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o auth-service ./services/auth/cmd/api
 
 # Runtime stage
 FROM alpine:3.19
-RUN apk --no-cache add ca-certificates
-WORKDIR /root/
-COPY --from=builder /app/auth-service .
-COPY --from=builder /app/services/auth/config ./config
+RUN apk --no-cache add ca-certificates \
+    && addgroup -S app \
+    && adduser -S app -G app
+WORKDIR /home/app
+COPY --from=builder --chown=app:app /app/auth-service .
+COPY --from=builder --chown=app:app /app/services/auth/config ./config
+USER app
 EXPOSE 8081
 CMD ["./auth-service"]
