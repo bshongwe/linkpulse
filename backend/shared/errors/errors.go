@@ -7,6 +7,9 @@ import (
 
 var As = errors.As
 
+// ErrCacheMiss is returned when a cache key is not found
+var ErrCacheMiss = errors.New("cache miss")
+
 type ErrorCode string
 
 const (
