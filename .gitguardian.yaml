@@ -1,0 +1,25 @@
+# GitGuardian Configuration
+# This file configures GitGuardian behavior for the repository
+
+# Version of the configuration file
+version: 1
+
+# Policies to apply
+policies:
+  - name: exclude_test_files
+    description: "Exclude test files from secret scanning as they contain test-only tokens"
+    rules:
+      # Exclude test files that contain dynamically generated test tokens
+      - path_patterns:
+          - "**/*_test.go"
+          - "**/test/**"
+        secret_types:
+          - "JSON Web Token"
+        reason: "Test-only tokens generated dynamically in test helpers"
+
+# Custom patterns to ignore
+ignore_patterns:
+  # Ignore test tokens in test files
+  - path: "backend/shared/middleware/auth_test.go"
+    type: "JSON Web Token"
+    reason: "Dynamically generated test tokens in test helper functions"

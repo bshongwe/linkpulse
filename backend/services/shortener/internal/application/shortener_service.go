@@ -93,6 +93,11 @@ func (s *ShortenerService) CreateShortLink(
 		UpdatedAt:    time.Now(),
 	}
 
+	// Ensure Tags is not nil (DB default is empty array)
+	if link.Tags == nil {
+		link.Tags = []string{}
+	}
+
 	// Persist to database
 	if err := s.linkRepo.Create(ctx, link); err != nil {
 		return nil, fmt.Errorf("failed to create short link: %w", err)

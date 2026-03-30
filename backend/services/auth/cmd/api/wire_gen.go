@@ -10,6 +10,7 @@ import (
 	"github.com/bshongwe/linkpulse/backend/services/auth/internal/adapters/postgres"
 	"github.com/bshongwe/linkpulse/backend/services/auth/internal/adapters/redis"
 	"github.com/bshongwe/linkpulse/backend/services/auth/internal/application"
+	"github.com/bshongwe/linkpulse/backend/services/auth/internal/domain"
 	"github.com/bshongwe/linkpulse/backend/services/auth/internal/presentation/http"
 	"github.com/bshongwe/linkpulse/backend/shared/config"
 	"github.com/google/wire"
@@ -17,28 +18,28 @@ import (
 
 // Injectors from wire.go:
 
-func Initialize() (*http.Handler, func(), error) {
+func Initialize() (*http.Handler, domain.TokenService, func(), error) {
 	configConfig, err := config.Load()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	databaseConfig := &configConfig.Database
 	db, err := postgres.NewDB(databaseConfig)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	userRepository := postgres.NewUserRepository(db)
 	jwtConfig := configConfig.JWT
 	redisConfig := &configConfig.Redis
 	client, err := redis.NewClient(redisConfig)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	tokenBlacklist := redis.NewTokenBlacklist(client)
 	tokenService := application.NewTokenService(jwtConfig, tokenBlacklist)
 	authService := application.NewAuthService(userRepository, tokenService)
 	handler := http.NewHandler(authService)
-	return handler, func() {
+	return handler, tokenService, func() {
 	}, nil
 }
 
