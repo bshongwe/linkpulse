@@ -20,7 +20,6 @@ CREATE TABLE IF NOT EXISTS links (
 );
 
 CREATE INDEX IF NOT EXISTS idx_links_workspace_id  ON links(workspace_id);
-CREATE INDEX IF NOT EXISTS idx_links_short_code    ON links(short_code);
 CREATE INDEX IF NOT EXISTS idx_links_campaign_id   ON links(campaign_id) WHERE campaign_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_links_expires_at    ON links(expires_at)  WHERE expires_at IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_links_tags          ON links USING GIN(tags);
