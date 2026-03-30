@@ -105,6 +105,9 @@ func (ec *EventConsumer) consume(ctx context.Context) {
 			continue
 		}
 
+		// Mark event origin as kafka to prevent republishing loop
+		event.Origin = "kafka"
+
 		// Validate the event
 		if !event.IsValid() {
 			ec.logger.Warn("received invalid click event",
