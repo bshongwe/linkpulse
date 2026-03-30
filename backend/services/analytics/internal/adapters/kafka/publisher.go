@@ -9,7 +9,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/bshongwe/linkpulse/backend/services/analytics/internal/domain"
-	"github.com/bshongwe/linkpulse/backend/services/analytics/internal/ports"
 )
 
 // EventPublisher implements the ports.EventPublisher interface using Kafka
