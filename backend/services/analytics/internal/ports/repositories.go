@@ -40,8 +40,11 @@ type EventPublisher interface {
 
 // EventConsumer defines the interface for consuming click events from message queue
 type EventConsumer interface {
+	// RegisterHandler registers a handler to process incoming click events
+	RegisterHandler(handler EventHandler)
+
 	// Start begins consuming events from the message broker
-	Start(ctx context.Context, handler EventHandler) error
+	Start(ctx context.Context) error
 
 	// Close closes the consumer connection
 	Close() error

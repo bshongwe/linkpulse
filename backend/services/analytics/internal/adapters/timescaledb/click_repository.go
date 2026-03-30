@@ -34,20 +34,22 @@ const (
 
 // RecordClick persists a single click event to the hypertable
 func (r *ClickRepository) RecordClick(ctx context.Context, event *domain.ClickEvent) error {
-	query := `INSERT INTO click_events (time, link_id, short_code, ip_hash, country_code, device_type, referrer, utm_source, utm_medium, utm_campaign)
-	          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
+	id := uuid.New()
+	query := `INSERT INTO click_events (id, time, link_id, short_code, ip_hash, country_code, device_type, referrer, utm_source, utm_medium, utm_campaign)
+	          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
 
 	_, err := r.pool.Exec(ctx, query,
+		id,
 		event.Timestamp,
 		event.LinkID,
 		event.ShortCode,
-		event.IPAddressHash,
-		event.CountryCode,
-		event.DeviceType,
-		event.Referrer,
-		event.UTMSource,
-		event.UTMMedium,
-		event.UTMCampaign,
+		nullableString(event.IPAddressHash),
+		nullableString(event.CountryCode),
+		nullableString(event.DeviceType),
+		nullableString(event.Referrer),
+		nullableString(event.UTMSource),
+		nullableString(event.UTMMedium),
+		nullableString(event.UTMCampaign),
 	)
 
 	if err != nil {
@@ -97,22 +99,30 @@ func (r *ClickRepository) getSummaryCounts(ctx context.Context, linkID uuid.UUID
 // getSummaryTopMetrics retrieves top countries, devices, referrers, and UTM sources
 func (r *ClickRepository) getSummaryTopMetrics(ctx context.Context, linkID uuid.UUID, since time.Time, summary *domain.AnalyticsSummary) error {
 	// Get top countries
-	r.populateTopValues(ctx, linkID, since, "country_code", summary.TopCountries)
+	if err := r.populateTopValues(ctx, linkID, since, "country_code", summary.TopCountries); err != nil {
+		return err
+	}
 
 	// Get top devices
-	r.populateTopValues(ctx, linkID, since, "device_type", summary.TopDevices)
+	if err := r.populateTopValues(ctx, linkID, since, "device_type", summary.TopDevices); err != nil {
+		return err
+	}
 
 	// Get top referrers
-	r.populateTopValues(ctx, linkID, since, "referrer", summary.TopReferrers)
+	if err := r.populateTopValues(ctx, linkID, since, "referrer", summary.TopReferrers); err != nil {
+		return err
+	}
 
 	// Get top UTM sources
-	r.populateTopValues(ctx, linkID, since, "utm_source", summary.TopUTMSources)
+	if err := r.populateTopValues(ctx, linkID, since, "utm_source", summary.TopUTMSources); err != nil {
+		return err
+	}
 
 	return nil
 }
 
 // populateTopValues is a helper that queries and populates a map with top values for a given column
-func (r *ClickRepository) populateTopValues(ctx context.Context, linkID uuid.UUID, since time.Time, column string, target map[string]int64) {
+func (r *ClickRepository) populateTopValues(ctx context.Context, linkID uuid.UUID, since time.Time, column string, target map[string]int64) error {
 	query := fmt.Sprintf(
 		`SELECT %s, COUNT(*) as count FROM click_events 
 		 WHERE link_id = $1 AND %s IS NOT NULL AND time >= $2
@@ -121,17 +131,20 @@ func (r *ClickRepository) populateTopValues(ctx context.Context, linkID uuid.UUI
 
 	rows, err := r.pool.Query(ctx, query, linkID, since)
 	if err != nil {
-		return
+		return fmt.Errorf(errWrap, "failed to query top "+column, err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var key string
 		var count int64
-		if err := rows.Scan(&key, &count); err == nil {
-			target[key] = count
+		if err := rows.Scan(&key, &count); err != nil {
+			return fmt.Errorf(errWrap, errScanFailed, err)
 		}
+		target[key] = count
 	}
+
+	return nil
 }
 
 // GetSummary retrieves aggregated analytics for a link
@@ -265,4 +278,12 @@ func (r *ClickRepository) GetDeviceDistribution(ctx context.Context, linkID uuid
 	}
 
 	return distribution, nil
+}
+
+// nullableString converts empty strings to nil for optional fields
+func nullableString(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }

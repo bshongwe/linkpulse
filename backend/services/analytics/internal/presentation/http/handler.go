@@ -34,7 +34,7 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 		analytics.GET("/:linkId/clicks", h.GetClicks)
 		analytics.GET("/:linkId/countries", h.GetCountryDistribution)
 		analytics.GET("/:linkId/devices", h.GetDeviceDistribution)
-		analytics.GET("/:linkId/live-count", h.GetLiveCount)
+		analytics.GET("/:shortCode/live-count", h.GetLiveCount)
 	}
 }
 
@@ -213,9 +213,9 @@ func (h *Handler) GetDeviceDistribution(c *gin.Context) {
 // @Param linkId path string true "Link ID (UUID)"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} ErrorResponse
-// @Router /api/v1/analytics/{linkId}/live-count [get]
+// @Router /api/v1/analytics/{shortCode}/live-count [get]
 func (h *Handler) GetLiveCount(c *gin.Context) {
-	shortCode := c.Param(linkIDParam)
+	shortCode := c.Param("shortCode")
 	if shortCode == "" {
 		h.logger.Warn(errMissingParam)
 		c.JSON(http.StatusBadRequest, gin.H{statusKey: errMissingParam})
