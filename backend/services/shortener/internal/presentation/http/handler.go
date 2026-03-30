@@ -15,6 +15,9 @@ import (
 const (
 	errInvalidRequestPayload   = "invalid request payload"
 	errInvalidWorkspaceID      = "invalid workspace_id"
+	errInvalidCreatedBy        = "invalid created_by"
+	errInvalidCampaignID       = "invalid campaign_id"
+	errInvalidID               = "invalid id"
 	errLinkNotFound            = "short link not found"
 	errFailedCreateShortLink   = "failed to create short link"
 	errFailedRetrieveShortLink = "failed to retrieve short link"
@@ -27,6 +30,7 @@ const (
 	errFailedSearchLinks       = "failed to search links"
 	errInvalidQueryParameters  = "invalid query parameters"
 	errMissingQueryParameters  = "missing required query parameters"
+	errShortCodeAlreadyTaken   = "short code already taken"
 )
 
 type ShortenerHandler struct {
@@ -86,7 +90,7 @@ func (h *ShortenerHandler) CreateShortLink(c *gin.Context) {
 	}
 	userID, err := uuid.Parse(req.CreatedBy)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid created_by"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidCreatedBy})
 		return
 	}
 
@@ -100,7 +104,7 @@ func (h *ShortenerHandler) CreateShortLink(c *gin.Context) {
 	if req.CampaignID != nil {
 		id, err := uuid.Parse(*req.CampaignID)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid campaign_id"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidCampaignID})
 			return
 		}
 		campaignID = &id
@@ -120,7 +124,7 @@ func (h *ShortenerHandler) CreateShortLink(c *gin.Context) {
 	link, err := h.service.CreateShortLink(c.Request.Context(), domainReq, userID, workspaceID)
 	if err != nil {
 		if sharedErrors.IsAlreadyExists(err) {
-			c.JSON(http.StatusConflict, gin.H{"error": "short code already taken"})
+			c.JSON(http.StatusConflict, gin.H{"error": errShortCodeAlreadyTaken})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -275,7 +279,7 @@ func (h *ShortenerHandler) UpdateShortLink(c *gin.Context) {
 	// Read link ID from path param, not body
 	linkID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidID})
 		return
 	}
 
@@ -289,7 +293,7 @@ func (h *ShortenerHandler) UpdateShortLink(c *gin.Context) {
 	if req.CampaignID != nil {
 		id, err := uuid.Parse(*req.CampaignID)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid campaign_id"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidCampaignID})
 			return
 		}
 		campaignID = &id
@@ -364,7 +368,7 @@ func (h *ShortenerHandler) DeactivateLink(c *gin.Context) {
 	// Read link ID from path param
 	linkID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidID})
 		return
 	}
 
@@ -407,7 +411,7 @@ func (h *ShortenerHandler) DeleteLink(c *gin.Context) {
 	// Read link ID from path param
 	linkID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidID})
 		return
 	}
 
@@ -456,7 +460,7 @@ func (h *ShortenerHandler) GetLinkStats(c *gin.Context) {
 	// Read link ID from path param
 	linkID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidID})
 		return
 	}
 
@@ -608,7 +612,7 @@ func (h *ShortenerHandler) ListLinksByCampaign(c *gin.Context) {
 	// Read campaign ID from path param
 	campaignID, err := uuid.Parse(c.Param("campaign_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid campaign_id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidCampaignID})
 		return
 	}
 
