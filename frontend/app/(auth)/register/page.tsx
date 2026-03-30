@@ -1,12 +1,92 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { LinkIcon } from 'lucide-react';
+import { setAuthToken, setUser, decodeJWT } from '@/lib/auth';
+
+const AUTH_BASE = process.env.NEXT_PUBLIC_AUTH_BASE || 'http://localhost:8081';
 
 export default function RegisterPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    // Basic validation
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Call real auth service register endpoint
+      const response = await fetch(`${AUTH_BASE}/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password, name }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Registration failed. Please try again.');
+        return;
+      }
+
+      // Store token
+      setAuthToken(data.access_token);
+
+      // Extract user info from JWT token
+      const decoded = decodeJWT(data.access_token);
+      if (decoded) {
+        const user = {
+          id: decoded.user_id || decoded.sub || email.split('@')[0],
+          email: decoded.email || email,
+          name: decoded.name || name,
+          workspace_id: decoded.workspace_id || 'default',
+        };
+        setUser(user);
+      } else {
+        // Fallback user object if JWT decode fails
+        setUser({
+          id: email.split('@')[0],
+          email,
+          name,
+          workspace_id: 'default',
+        });
+      }
+
+      router.push('/');
+    } catch (err) {
+      console.error('Register error:', err);
+      setError('Failed to connect to auth service. Is the backend running?');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 flex flex-col items-center justify-center px-4">
+      {/* Background decoration */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-600/5 rounded-full blur-3xl"></div>
+      </div>
+
       <div className="relative z-10 w-full max-w-md">
+        {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-12 h-12 bg-emerald-600 rounded-xl mb-4">
             <LinkIcon className="w-7 h-7 text-white" />
@@ -15,12 +95,77 @@ export default function RegisterPage() {
           <p className="text-zinc-400 mt-2">Create your account</p>
         </div>
 
-        <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-8 shadow-xl text-center">
-          <p className="text-zinc-400 mb-4">Registration coming soon!</p>
-          <p className="text-zinc-500 text-sm mb-6">For now, use any email to login in the sign in page.</p>
-          <Link href="/login" className="text-emerald-500 hover:text-emerald-400">
-            Back to login
-          </Link>
+        {/* Register Form */}
+        <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-8 shadow-xl">
+          <h2 className="text-2xl font-bold mb-6">Get started</h2>
+
+          {error && (
+            <div className="bg-red-900/20 border border-red-800 rounded-lg p-4 mb-6 text-red-400 text-sm">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-zinc-200 mb-2">Full Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="John Doe"
+                required
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition-colors"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-zinc-200 mb-2">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition-colors"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-zinc-200 mb-2">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition-colors"
+              />
+              <p className="text-xs text-zinc-500 mt-2">Minimum 8 characters</p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-600/50 text-white font-semibold py-2 px-4 rounded-lg transition-colors mt-6"
+            >
+              {loading ? 'Creating account...' : 'Sign up'}
+            </button>
+          </form>
+
+          <p className="text-center text-zinc-400 text-sm mt-6">
+            Already have an account?{' '}
+            <Link href="/login" className="text-emerald-500 hover:text-emerald-400">
+              Sign in
+            </Link>
+          </p>
+        </div>
+
+        {/* Security info */}
+        <div className="mt-6 p-4 bg-blue-900/20 border border-blue-800 rounded-lg">
+          <p className="text-blue-400 text-sm font-semibold mb-2">🔒 Secure Registration</p>
+          <p className="text-zinc-400 text-xs">
+            Your password is securely hashed and never stored in plain text.
+          </p>
         </div>
       </div>
     </div>

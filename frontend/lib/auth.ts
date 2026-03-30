@@ -3,6 +3,24 @@ import Cookies from 'js-cookie';
 const TOKEN_KEY = 'access_token';
 const USER_KEY = 'user';
 
+/**
+ * Decode JWT token to extract claims
+ * Note: This does NOT verify the signature - verification happens on the backend
+ */
+export function decodeJWT(token: string): any {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      throw new Error('Invalid token format');
+    }
+    const decoded = JSON.parse(atob(parts[1]));
+    return decoded;
+  } catch (error) {
+    console.error('Failed to decode JWT:', error);
+    return null;
+  }
+}
+
 export function setAuthToken(token: string) {
   if (typeof window !== 'undefined') {
     localStorage.setItem(TOKEN_KEY, token);

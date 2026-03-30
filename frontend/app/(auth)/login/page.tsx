@@ -4,7 +4,9 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LinkIcon } from 'lucide-react';
-import { setAuthToken, setUser } from '@/lib/auth';
+import { setAuthToken, setUser, decodeJWT } from '@/lib/auth';
+
+const AUTH_BASE = process.env.NEXT_PUBLIC_AUTH_BASE || 'http://localhost:8081';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,20 +21,49 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // For demo purposes, accept any login
-      // In production, this would call the auth service
-      const mockUser = {
-        id: 'user-123',
-        email,
-        name: email.split('@')[0],
-        workspace_id: 'workspace-123',
-      };
+      // Call real auth service
+      const response = await fetch(`${AUTH_BASE}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-      setAuthToken('mock-jwt-token');
-      setUser(mockUser);
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Login failed. Please check your credentials.');
+        return;
+      }
+
+      // Store token
+      setAuthToken(data.access_token);
+
+      // Extract user info from JWT token
+      const decoded = decodeJWT(data.access_token);
+      if (decoded) {
+        const user = {
+          id: decoded.user_id || decoded.sub || email.split('@')[0],
+          email: decoded.email || email,
+          name: decoded.name || email.split('@')[0],
+          workspace_id: decoded.workspace_id || 'default',
+        };
+        setUser(user);
+      } else {
+        // Fallback user object if JWT decode fails
+        setUser({
+          id: email.split('@')[0],
+          email,
+          name: email.split('@')[0],
+          workspace_id: 'default',
+        });
+      }
+
       router.push('/');
     } catch (err) {
-      setError('Login failed. Please try again.');
+      console.error('Login error:', err);
+      setError('Failed to connect to auth service. Is the backend running?');
     } finally {
       setLoading(false);
     }
@@ -105,6 +136,14 @@ export default function LoginPage() {
             <Link href="/register" className="text-emerald-500 hover:text-emerald-400">
               Sign up
             </Link>
+          </p>
+        </div>
+
+        {/* Demo credentials info */}
+        <div className="mt-6 p-4 bg-emerald-900/20 border border-emerald-800 rounded-lg">
+          <p className="text-emerald-400 text-sm font-semibold mb-2">Demo Credentials</p>
+          <p className="text-zinc-400 text-xs">
+            Create an account first via the register page, or contact admin for test credentials.
           </p>
         </div>
       </div>
