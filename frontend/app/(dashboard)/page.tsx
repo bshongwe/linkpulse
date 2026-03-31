@@ -16,10 +16,10 @@ export default function Dashboard() {
   useEffect(() => {
     setMounted(true);
     const currentUser = getUser();
-    if (!currentUser) {
-      router.push('/login');
-    } else {
+    if (currentUser) {
       setUser(currentUser);
+    } else {
+      router.push('/login');
     }
   }, [router]);
 
@@ -92,7 +92,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
           {/* Live Counter */}
           <div className="lg:col-span-2">
-            <LiveCounter shortCode="demo" />
+            <LiveCounter />
           </div>
 
           {/* Stats Card */}
