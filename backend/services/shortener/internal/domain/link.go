@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 // RedirectType specifies how the short link redirects
@@ -16,24 +17,24 @@ const (
 
 // ShortLink represents a shortened URL in the system
 type ShortLink struct {
-	ID             uuid.UUID     `json:"id"`
-	ShortCode      string        `json:"short_code"`           // 6-10 character unique code
-	OriginalURL    string        `json:"original_url"`
-	WorkspaceID    uuid.UUID     `json:"workspace_id"`         // Multi-tenant support
-	CreatedBy      uuid.UUID     `json:"created_by"`           // User who created the link
-	Title          string        `json:"title,omitempty"`
-	Description    string        `json:"description,omitempty"`
-	ExpiresAt      *time.Time    `json:"expires_at,omitempty"`
-	IsActive       bool          `json:"is_active"`
-	ClickCount     int64         `json:"click_count"`          // Analytics
-	LastAccessedAt *time.Time    `json:"last_accessed_at,omitempty"` // Last click timestamp
-	RedirectType   RedirectType  `json:"redirect_type"`        // 301 or 302
-	QRCode         string        `json:"qr_code,omitempty"`    // Base64 encoded QR code image
-	QRCodeURL      string        `json:"qr_code_url,omitempty"` // URL to QR code image
-	Tags           []string      `json:"tags,omitempty"`       // For filtering/organization
-	CampaignID     *uuid.UUID    `json:"campaign_id,omitempty"` // Link to marketing campaigns
-	CreatedAt      time.Time     `json:"created_at"`
-	UpdatedAt      time.Time     `json:"updated_at"`           // For tracking modifications
+	ID             uuid.UUID      `json:"id" db:"id"`
+	ShortCode      string         `json:"short_code" db:"short_code"`                           // 6-10 character unique code
+	OriginalURL    string         `json:"original_url" db:"original_url"`
+	WorkspaceID    uuid.UUID      `json:"workspace_id" db:"workspace_id"`                     // Multi-tenant support
+	CreatedBy      uuid.UUID      `json:"created_by" db:"created_by"`                        // User who created the link
+	Title          string         `json:"title,omitempty" db:"title"`
+	Description    string         `json:"description,omitempty" db:"description"`
+	ExpiresAt      *time.Time     `json:"expires_at,omitempty" db:"expires_at"`
+	IsActive       bool           `json:"is_active" db:"is_active"`
+	ClickCount     int64          `json:"click_count" db:"click_count"`                      // Analytics
+	LastAccessedAt *time.Time     `json:"last_accessed_at,omitempty" db:"last_accessed_at"` // Last click timestamp
+	RedirectType   RedirectType   `json:"redirect_type" db:"redirect_type"`                 // 301 or 302
+	QRCode         string         `json:"qr_code,omitempty" db:"qr_code"`                  // Base64 encoded QR code image
+	QRCodeURL      string         `json:"qr_code_url,omitempty" db:"qr_code_url"`         // URL to QR code image
+	Tags           pq.StringArray `json:"tags,omitempty" db:"tags"`                        // For filtering/organization
+	CampaignID     *uuid.UUID     `json:"campaign_id,omitempty" db:"campaign_id"`          // Link to marketing campaigns
+	CreatedAt      time.Time      `json:"created_at" db:"created_at"`
+	UpdatedAt      time.Time      `json:"updated_at" db:"updated_at"`                     // For tracking modifications
 }
 
 // CreateShortLinkRequest is the payload for creating a new short link
