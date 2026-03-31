@@ -71,6 +71,7 @@ services:
       LINKPULSE_OTEL_ENVIRONMENT: "development"
       LINKPULSE_JWT_ACCESS_SECRET: "super-secret-access-key-change-in-production-2026"
       LINKPULSE_JWT_REFRESH_SECRET: "super-secret-refresh-key-change-in-production-2026"
+      LINKPULSE_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:3001"
     depends_on:
       postgres:
         condition: service_healthy
@@ -94,6 +95,7 @@ services:
       LINKPULSE_OTEL_ENVIRONMENT: "development"
       LINKPULSE_JWT_ACCESS_SECRET: "super-secret-access-key-change-in-production-2026"
       LINKPULSE_JWT_REFRESH_SECRET: "super-secret-refresh-key-change-in-production-2026"
+      LINKPULSE_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:3001"
     depends_on:
       postgres:
         condition: service_healthy

@@ -34,8 +34,10 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 		analytics.GET("/:linkId/clicks", h.GetClicks)
 		analytics.GET("/:linkId/countries", h.GetCountryDistribution)
 		analytics.GET("/:linkId/devices", h.GetDeviceDistribution)
-		analytics.GET("/:shortCode/live-count", h.GetLiveCount)
 	}
+
+	// Live count endpoint uses short code instead of link ID
+	router.GET("/api/v1/live-count/:code", h.GetLiveCount)
 }
 
 // GetSummary retrieves analytics summary for a link
@@ -210,12 +212,12 @@ func (h *Handler) GetDeviceDistribution(c *gin.Context) {
 // @Summary Get live click count
 // @Description Get the current total click count for a short code
 // @Tags analytics
-// @Param linkId path string true "Link ID (UUID)"
+// @Param code path string true "Short code"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} ErrorResponse
-// @Router /api/v1/analytics/{shortCode}/live-count [get]
+// @Router /api/v1/live-count/{code} [get]
 func (h *Handler) GetLiveCount(c *gin.Context) {
-	shortCode := c.Param("shortCode")
+	shortCode := c.Param("code")
 	if shortCode == "" {
 		h.logger.Warn(errMissingParam)
 		c.JSON(http.StatusBadRequest, gin.H{statusKey: errMissingParam})

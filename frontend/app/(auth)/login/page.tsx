@@ -139,9 +139,9 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Demo credentials info */}
+        {/* Login info */}
         <div className="mt-6 p-4 bg-emerald-900/20 border border-emerald-800 rounded-lg">
-          <p className="text-emerald-400 text-sm font-semibold mb-2">Demo Credentials</p>
+          <p className="text-emerald-400 text-sm font-semibold mb-2">Login Info</p>
           <p className="text-zinc-400 text-xs">
             Create an account first via the register page, or contact admin for test credentials.
           </p>

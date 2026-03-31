@@ -5,6 +5,7 @@ import (
 	stdhttp "net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -20,6 +21,46 @@ import (
 	httphandler "github.com/bshongwe/linkpulse/backend/services/analytics/internal/presentation/http"
 	"github.com/bshongwe/linkpulse/backend/shared/logger"
 )
+
+func buildCORSMiddleware(allowedOrigins string) gin.HandlerFunc {
+	allowedSet := make(map[string]struct{})
+	if allowedOrigins != "" {
+		for _, o := range strings.Split(allowedOrigins, ",") {
+			if o = strings.TrimSpace(o); o != "" {
+				allowedSet[o] = struct{}{}
+			}
+		}
+	}
+
+	if len(allowedSet) == 0 {
+		logger.Log.Warn("CORS: No allowed origins configured. Set LINKPULSE_ALLOWED_ORIGINS to restrict access.")
+	}
+
+	return func(c *gin.Context) {
+		origin := c.GetHeader("Origin")
+		
+		// Check if origin is allowed
+		if _, ok := allowedSet[origin]; ok {
+			c.Header("Access-Control-Allow-Origin", origin)
+			c.Header("Access-Control-Allow-Credentials", "true")
+			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
+			c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+			c.Header("Access-Control-Max-Age", "86400")
+		}
+		
+		// Handle preflight requests
+		if c.Request.Method == stdhttp.MethodOptions {
+			if _, ok := allowedSet[origin]; ok {
+				c.AbortWithStatus(stdhttp.StatusNoContent)
+			} else {
+				c.AbortWithStatus(stdhttp.StatusForbidden)
+			}
+			return
+		}
+		
+		c.Next()
+	}
+}
 
 func main() {
 	// Initialize logger
@@ -94,6 +135,9 @@ func main() {
 
 	// Initialize HTTP router
 	router := gin.Default()
+
+	// Apply CORS middleware
+	router.Use(buildCORSMiddleware(os.Getenv("LINKPULSE_ALLOWED_ORIGINS")))
 
 	// Create HTTP handler
 	handler := httphandler.NewHandler(analyticsService, log)

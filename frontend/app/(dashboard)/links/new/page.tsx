@@ -18,10 +18,10 @@ export default function CreateLinkPage() {
   useEffect(() => {
     setMounted(true);
     const currentUser = getUser();
-    if (!currentUser) {
-      router.push('/login');
-    } else {
+    if (currentUser) {
       setUser(currentUser);
+    } else {
+      router.push('/login');
     }
   }, [router]);
 
@@ -36,21 +36,21 @@ export default function CreateLinkPage() {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
+      if (!user) {
         setError('Not authenticated. Please log in again.');
         router.push('/login');
         return;
       }
 
-      const res = await fetch('http://localhost:8082/shorten', {
+      const res = await fetch('http://localhost:8082/api/v1/shorten', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
         },
         body: JSON.stringify({
           original_url: originalUrl,
+          workspace_id: user.workspace_id || 'default',
           custom_alias: customAlias || undefined,
         }),
       });

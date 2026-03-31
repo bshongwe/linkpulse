@@ -1,46 +1,70 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Link as LinkIcon, LogOut, Trash2, Copy } from 'lucide-react';
+import { Plus, Link as LinkIcon, LogOut, Trash2, Copy, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getUser, removeAuthToken } from '@/lib/auth';
-import CreateLinkModal from '@/components/CreateLinkModal';
+import { listLinks, deleteShortLink } from '@/lib/api';
 
 export default function LinksPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [links, setLinks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
     const currentUser = getUser();
     if (!currentUser) {
       router.push('/login');
-    } else {
-      setUser(currentUser);
-      // Simulate loading links
-      setTimeout(() => {
-        setLinks([]);
-        setLoading(false);
-      }, 500);
+      return;
     }
+    setUser(currentUser);
+    fetchLinks(currentUser.workspace_id || 'default');
   }, [router]);
+
+  const fetchLinks = async (workspaceId: string) => {
+    try {
+      setLoading(true);
+      setError('');
+      const result = await listLinks(workspaceId);
+      setLinks(result || []);
+    } catch (err: any) {
+      console.error('Failed to fetch links:', err);
+      const errorMsg = err.response?.data?.error || err.message || 'Failed to load links';
+      setError(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     removeAuthToken();
     router.push('/login');
   };
 
-  const handleDeleteLink = (id: string) => {
-    setLinks(links.filter((link) => link.id !== id));
+  const handleDeleteLink = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this link?')) return;
+    
+    try {
+      setDeleting(id);
+      await deleteShortLink(id);
+      setLinks(links.filter((link) => link.id !== id));
+    } catch (err: any) {
+      console.error('Failed to delete link:', err);
+      const errorMsg = err.response?.data?.error || 'Failed to delete link';
+      alert(`Error: ${errorMsg}`);
+    } finally {
+      setDeleting(null);
+    }
   };
 
   const handleCopyLink = (shortCode: string) => {
-    const url = `${window.location.origin}/${shortCode}`;
+    const url = `https://short.url/${shortCode}`;
     navigator.clipboard.writeText(url);
     alert('Link copied to clipboard!');
   };
@@ -83,93 +107,119 @@ export default function LinksPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-start mb-8">
           <div>
-            <h2 className="text-3xl font-bold mb-2">My Links</h2>
-            <p className="text-zinc-400">Manage and track all your shortened URLs</p>
+            <div className="flex items-center gap-3 mb-4">
+              <Link
+                href="/"
+                className="text-zinc-400 hover:text-white transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Link>
+              <h2 className="text-3xl font-bold">My Links</h2>
+            </div>
+            <p className="text-zinc-400">View and manage all your shortened links</p>
           </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
+          <Link
+            href="/links/new"
             className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 px-6 py-3 rounded-lg font-semibold transition-colors"
           >
             <Plus className="w-5 h-5" />
-            New Short Link
-          </button>
+            New Link
+          </Link>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-900/20 border border-red-800 rounded-lg p-4 mb-6 text-red-400 text-sm">
+            {error}
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-emerald-500"></div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && links.length === 0 && (
+          <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-12 text-center">
+            <LinkIcon className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold mb-2">No links yet</h3>
+            <p className="text-zinc-400 mb-6">Create your first shortened link to get started</p>
+            <Link
+              href="/links/new"
+              className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 px-6 py-3 rounded-lg font-semibold transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              Create Link
+            </Link>
+          </div>
+        )}
+
         {/* Links Table */}
-        <div className="bg-zinc-900 rounded-2xl border border-zinc-800 overflow-hidden">
-          {loading ? (
-            <div className="p-8 text-center text-zinc-400">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-emerald-500 mx-auto mb-2"></div>
-              Loading links...
-            </div>
-          ) : links.length === 0 ? (
-            <div className="p-12 text-center">
-              <LinkIcon className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No links yet</h3>
-              <p className="text-zinc-400 mb-6">Create your first short link to get started</p>
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 px-6 py-3 rounded-lg font-semibold transition-colors"
-              >
-                <Plus className="w-5 h-5" />
-                Create Link
-              </button>
-            </div>
-          ) : (
+        {!loading && links.length > 0 && (
+          <div className="bg-zinc-900 rounded-2xl border border-zinc-800 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead>
-                  <tr className="border-b border-zinc-800 bg-zinc-800/50">
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Short Code</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Original URL</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Clicks</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-300">Created</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-zinc-300">Actions</th>
+                <thead className="border-b border-zinc-800 bg-zinc-800/50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-200">Original URL</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-200">Short Code</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-200">Clicks</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-200">Created</th>
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-zinc-200">Actions</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-zinc-800">
                   {links.map((link) => (
-                    <tr key={link.id} className="border-b border-zinc-800 hover:bg-zinc-800/50 transition-colors">
-                      <td className="px-6 py-4 font-mono text-emerald-500">{link.short_code}</td>
-                      <td className="px-6 py-4 truncate text-sm text-zinc-300">{link.original_url}</td>
-                      <td className="px-6 py-4 text-sm">{link.click_count || 0}</td>
-                      <td className="px-6 py-4 text-sm text-zinc-400">{link.created_at}</td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={() => handleCopyLink(link.short_code)}
-                            className="p-2 hover:bg-zinc-700 rounded-lg transition-colors text-zinc-400 hover:text-white"
-                            title="Copy link"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteLink(link.id)}
-                            className="p-2 hover:bg-red-900/20 rounded-lg transition-colors text-zinc-400 hover:text-red-400"
-                            title="Delete link"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                    <tr key={link.id} className="hover:bg-zinc-800/50 transition-colors">
+                      <td className="px-6 py-4 text-sm text-zinc-300 truncate">
+                        <a
+                          href={link.original_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:text-emerald-500 transition-colors"
+                          title={link.original_url}
+                        >
+                          {link.original_url}
+                        </a>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-mono text-emerald-400">
+                        {link.short_code}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-zinc-300">
+                        {link.click_count || 0}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-zinc-400">
+                        {new Date(link.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 text-right space-x-2 flex justify-end">
+                        <button
+                          onClick={() => handleCopyLink(link.short_code)}
+                          className="p-2 hover:bg-zinc-700 rounded-lg transition-colors text-zinc-400 hover:text-white"
+                          title="Copy link"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteLink(link.id)}
+                          disabled={deleting === link.id}
+                          className="p-2 hover:bg-red-900/20 rounded-lg transition-colors text-zinc-400 hover:text-red-400 disabled:opacity-50"
+                          title="Delete link"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          )}
-        </div>
-
-        {/* Create Link Modal */}
-        <CreateLinkModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onSuccess={(newLink) => {
-            setLinks([newLink, ...links]);
-          }}
-        />
+          </div>
+        )}
       </main>
     </div>
   );
