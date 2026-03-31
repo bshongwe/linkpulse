@@ -42,8 +42,13 @@ export async function deleteShortLink(linkId: string): Promise<void> {
 }
 
 export async function listLinks(workspaceId: string): Promise<ShortLink[]> {
-  const response = await api.get(`/api/v1/shorten/workspace/${workspaceId}`);
-  return response.data.data || response.data || [];
+  const response = await api.get(`/api/v1/shorten/workspace/${workspaceId}`, {
+    params: {
+      page: 1,
+      page_size: 100,
+    },
+  });
+  return response.data.data?.links || response.data.data || response.data || [];
 }
 
 // Analytics

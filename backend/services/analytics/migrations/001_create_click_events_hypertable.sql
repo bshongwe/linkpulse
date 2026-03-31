@@ -46,12 +46,13 @@ CREATE INDEX IF NOT EXISTS idx_click_events_utm_source
 
 -- Enable compression for old data (older than 7 days)
 -- This significantly reduces storage footprint
-ALTER TABLE click_events SET (
-    timescaledb.compress,
-    timescaledb.compress_orderby = 'time DESC'
-);
-
-SELECT add_compression_policy('click_events', INTERVAL '7 days', if_not_exists => TRUE);
+-- Note: Compression requires TimescaleDB License, disabled for OSS version
+-- ALTER TABLE click_events SET (
+--     timescaledb.compress,
+--     timescaledb.compress_orderby = 'time DESC'
+-- );
+-- 
+-- SELECT add_compression_policy('click_events', INTERVAL '7 days', if_not_exists => TRUE);
 
 -- Enable continuous aggregates for fast analytics queries
 -- This will pre-aggregate data at regular intervals
