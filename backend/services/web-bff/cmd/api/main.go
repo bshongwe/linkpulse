@@ -53,7 +53,7 @@ func main() {
 		log,
 	)
 	analyticsClient := httpadapters.NewAnalyticsHTTPClient(
-		"http://analytics-service:8083",
+		"http://analytics-service:8082",
 		log,
 	)
 

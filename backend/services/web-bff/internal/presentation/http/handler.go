@@ -219,6 +219,7 @@ func (h *Handler) DeleteLink(c *gin.Context) {
 // GetDashboard retrieves dashboard data
 func (h *Handler) GetDashboard(c *gin.Context) {
 	workspaceID := c.GetString("workspace_id")
+	jwtToken := c.GetString("jwt_token")
 	if workspaceID == "" {
 		c.JSON(http.StatusUnauthorized, domain.ErrorResponse{
 			Error:  "missing workspace context",
@@ -227,7 +228,7 @@ func (h *Handler) GetDashboard(c *gin.Context) {
 		return
 	}
 
-	dashboard, err := h.bffService.GetDashboard(c.Request.Context(), workspaceID)
+	dashboard, err := h.bffService.GetDashboard(c.Request.Context(), workspaceID, jwtToken)
 	if err != nil {
 		h.logger.Error("failed to get dashboard", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, domain.ErrorResponse{
@@ -243,6 +244,7 @@ func (h *Handler) GetDashboard(c *gin.Context) {
 // GetLinkAnalytics retrieves analytics for a link
 func (h *Handler) GetLinkAnalytics(c *gin.Context) {
 	linkID := c.Param("linkID")
+	jwtToken := c.GetString("jwt_token")
 	if linkID == "" {
 		c.JSON(http.StatusBadRequest, domain.ErrorResponse{
 			Error:  "missing link ID",
@@ -251,7 +253,7 @@ func (h *Handler) GetLinkAnalytics(c *gin.Context) {
 		return
 	}
 
-	analytics, err := h.bffService.GetLinkAnalytics(c.Request.Context(), linkID)
+	analytics, err := h.bffService.GetLinkAnalytics(c.Request.Context(), linkID, jwtToken)
 	if err != nil {
 		h.logger.Error("failed to get link analytics", zap.String("linkID", linkID), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, domain.ErrorResponse{

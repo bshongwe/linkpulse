@@ -101,13 +101,13 @@ func (s *BFFService) ListLinks(
 }
 
 // GetDashboard retrieves complete dashboard data by aggregating from multiple services
-func (s *BFFService) GetDashboard(ctx context.Context, workspaceID string) (*domain.DashboardResponse, error) {
+func (s *BFFService) GetDashboard(ctx context.Context, workspaceID string, jwtToken string) (*domain.DashboardResponse, error) {
 	if workspaceID == "" {
 		return nil, fmt.Errorf("workspace_id is required")
 	}
 
 	// Call analytics service for aggregated stats
-	dashboard, err := s.analyticsClient.GetDashboardStats(ctx, workspaceID)
+	dashboard, err := s.analyticsClient.GetDashboardStats(ctx, workspaceID, jwtToken)
 	if err != nil {
 		s.logger.Error("failed to get dashboard stats",
 			zap.String("workspace_id", workspaceID),
@@ -120,12 +120,12 @@ func (s *BFFService) GetDashboard(ctx context.Context, workspaceID string) (*dom
 }
 
 // GetLinkAnalytics retrieves detailed analytics for a specific link
-func (s *BFFService) GetLinkAnalytics(ctx context.Context, linkID string) (*domain.AnalyticsResponse, error) {
+func (s *BFFService) GetLinkAnalytics(ctx context.Context, linkID string, jwtToken string) (*domain.AnalyticsResponse, error) {
 	if linkID == "" {
 		return nil, fmt.Errorf("link_id is required")
 	}
 
-	analytics, err := s.analyticsClient.GetLinkAnalytics(ctx, linkID)
+	analytics, err := s.analyticsClient.GetLinkAnalytics(ctx, linkID, jwtToken)
 	if err != nil {
 		s.logger.Error("failed to get link analytics",
 			zap.String("link_id", linkID),

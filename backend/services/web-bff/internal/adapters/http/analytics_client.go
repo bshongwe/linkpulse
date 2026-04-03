@@ -34,6 +34,7 @@ func NewAnalyticsHTTPClient(baseURL string, logger *zap.Logger) *AnalyticsHTTPCl
 func (c *AnalyticsHTTPClient) GetDashboardStats(
 	ctx context.Context,
 	workspaceID string,
+	jwtToken string,
 ) (*domain.DashboardResponse, error) {
 	// For now, return mock data until analytics service exposes this endpoint
 	// In a real scenario, you would call the analytics service here
@@ -51,6 +52,7 @@ func (c *AnalyticsHTTPClient) GetDashboardStats(
 func (c *AnalyticsHTTPClient) GetLinkAnalytics(
 	ctx context.Context,
 	linkID string,
+	jwtToken string,
 ) (*domain.AnalyticsResponse, error) {
 	url := fmt.Sprintf("%s/api/v1/analytics/%s/summary", c.baseURL, linkID)
 
@@ -58,6 +60,14 @@ func (c *AnalyticsHTTPClient) GetLinkAnalytics(
 	if err != nil {
 		c.logger.Error("failed to create request", zap.Error(err))
 		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	if jwtToken != "" {
+		httpReq.Header.Set("Authorization", "Bearer "+jwtToken)
+		c.logger.Info("GetLinkAnalytics: forwarding JWT token", 
+			zap.Int("token_length", len(jwtToken)))
+	} else {
+		c.logger.Warn("GetLinkAnalytics: no JWT token provided")
 	}
 
 	resp, err := c.httpClient.Do(httpReq)
@@ -79,23 +89,18 @@ func (c *AnalyticsHTTPClient) GetLinkAnalytics(
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	data, ok := result["data"].(map[string]interface{})
-	if !ok {
-		c.logger.Error("invalid response format")
-		return nil, fmt.Errorf("invalid response format from analytics service")
-	}
-
+	// Analytics service returns data directly, not wrapped in "data" key
 	analytics := &domain.AnalyticsResponse{
-		LinkID:         linkID,
+		LinkID:          linkID,
 		ClicksByCountry: make(map[string]int64),
 		ClicksByDevice:  make(map[string]int64),
 	}
 
-	if v, ok := data["total_clicks"].(float64); ok {
+	if v, ok := result["total_clicks"].(float64); ok {
 		analytics.TotalClicks = int64(v)
 	}
 
-	if v, ok := data["unique_clicks"].(float64); ok {
+	if v, ok := result["unique_clicks"].(float64); ok {
 		analytics.UniqueClicks = int64(v)
 	}
 
@@ -103,13 +108,17 @@ func (c *AnalyticsHTTPClient) GetLinkAnalytics(
 }
 
 // GetLiveCount retrieves the live click count for a short code
-func (c *AnalyticsHTTPClient) GetLiveCount(ctx context.Context, shortCode string) (int64, error) {
+func (c *AnalyticsHTTPClient) GetLiveCount(ctx context.Context, shortCode string, jwtToken string) (int64, error) {
 	url := fmt.Sprintf("%s/api/v1/live-count/%s", c.baseURL, shortCode)
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		c.logger.Error("failed to create request", zap.Error(err))
 		return 0, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	if jwtToken != "" {
+		httpReq.Header.Set("Authorization", "Bearer "+jwtToken)
 	}
 
 	resp, err := c.httpClient.Do(httpReq)
