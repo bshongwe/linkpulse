@@ -13,6 +13,22 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	authorizationHeader         = "Authorization"
+	bearerPrefix                = "Bearer "
+	contentTypeHeader           = "Content-Type"
+	contentTypeJSON             = "application/json"
+	errFailedMarshal            = "failed to marshal request"
+	errFailedCreateRequest      = "failed to create request"
+	errFailedCallService        = "failed to call shortener service"
+	errServiceError             = "shortener service error"
+	errFailedDecode             = "failed to decode response"
+	errInvalidResponseFormat    = "invalid response format from shortener service"
+	errFormat                   = "%s: %w"
+	errServiceReturnedStatus    = "shortener service returned status %d"
+	errInvalidResponseFormatMsg = "invalid response format"
+)
+
 // ShortenerHTTPClient is an HTTP client to the shortener service
 type ShortenerHTTPClient struct {
 	baseURL    string
@@ -64,20 +80,20 @@ func (c *ShortenerHTTPClient) CreateLink(
 
 	body, err := json.Marshal(payload)
 	if err != nil {
-		c.logger.Error("failed to marshal request", zap.Error(err))
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
+		c.logger.Error(errFailedMarshal, zap.Error(err))
+		return nil, fmt.Errorf(errFormat, errFailedMarshal, err)
 	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/shorten", bytes.NewBuffer(body))
 	if err != nil {
-		c.logger.Error("failed to create request", zap.Error(err))
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		c.logger.Error(errFailedCreateRequest, zap.Error(err))
+		return nil, fmt.Errorf(errFormat, errFailedCreateRequest, err)
 	}
 
-	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set(contentTypeHeader, contentTypeJSON)
 	if jwtToken != "" {
-		authHeader := "Bearer " + jwtToken
-		httpReq.Header.Set("Authorization", authHeader)
+		authHeader := bearerPrefix + jwtToken
+		httpReq.Header.Set(authorizationHeader, authHeader)
 		c.logger.Info("CreateLink: forwarding JWT token to shortener", 
 			zap.Int("token_length", len(jwtToken)))
 	} else {
@@ -86,28 +102,28 @@ func (c *ShortenerHTTPClient) CreateLink(
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
-		c.logger.Error("failed to call shortener service", zap.Error(err))
-		return nil, fmt.Errorf("failed to call shortener service: %w", err)
+		c.logger.Error(errFailedCallService, zap.Error(err))
+		return nil, fmt.Errorf(errFormat, errFailedCallService, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(resp.Body)
-		c.logger.Error("shortener service error", zap.Int("status_code", resp.StatusCode), zap.String("body", string(body)))
-		return nil, fmt.Errorf("shortener service returned status %d", resp.StatusCode)
+		c.logger.Error(errServiceError, zap.Int("status_code", resp.StatusCode), zap.String("body", string(body)))
+		return nil, fmt.Errorf(errServiceReturnedStatus, resp.StatusCode)
 	}
 
 	var result map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		c.logger.Error("failed to decode response", zap.Error(err))
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+		c.logger.Error(errFailedDecode, zap.Error(err))
+		return nil, fmt.Errorf(errFormat, errFailedDecode, err)
 	}
 
 	// Extract the link data
 	data, ok := result["data"].(map[string]interface{})
 	if !ok {
-		c.logger.Error("invalid response format")
-		return nil, fmt.Errorf("invalid response format from shortener service")
+		c.logger.Error(errInvalidResponseFormatMsg)
+		return nil, fmt.Errorf(errInvalidResponseFormat)
 	}
 
 	// Map response to LinkResponse
@@ -131,37 +147,37 @@ func (c *ShortenerHTTPClient) CreateLink(
 func (c *ShortenerHTTPClient) GetLink(ctx context.Context, shortCode, jwtToken string) (*domain.LinkResponse, error) {
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/api/v1/shorten?short_code="+shortCode, nil)
 	if err != nil {
-		c.logger.Error("failed to create request", zap.Error(err))
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		c.logger.Error(errFailedCreateRequest, zap.Error(err))
+		return nil, fmt.Errorf(errFormat, errFailedCreateRequest, err)
 	}
 
 	if jwtToken != "" {
-		httpReq.Header.Set("Authorization", "Bearer "+jwtToken)
+		httpReq.Header.Set(authorizationHeader, bearerPrefix+jwtToken)
 	}
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
-		c.logger.Error("failed to call shortener service", zap.Error(err))
-		return nil, fmt.Errorf("failed to call shortener service: %w", err)
+		c.logger.Error(errFailedCallService, zap.Error(err))
+		return nil, fmt.Errorf(errFormat, errFailedCallService, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		c.logger.Error("shortener service error", zap.Int("status_code", resp.StatusCode), zap.String("body", string(body)))
-		return nil, fmt.Errorf("shortener service returned status %d", resp.StatusCode)
+		c.logger.Error(errServiceError, zap.Int("status_code", resp.StatusCode), zap.String("body", string(body)))
+		return nil, fmt.Errorf(errServiceReturnedStatus, resp.StatusCode)
 	}
 
 	var result map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		c.logger.Error("failed to decode response", zap.Error(err))
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+		c.logger.Error(errFailedDecode, zap.Error(err))
+		return nil, fmt.Errorf(errFormat, errFailedDecode, err)
 	}
 
 	data, ok := result["data"].(map[string]interface{})
 	if !ok {
-		c.logger.Error("invalid response format")
-		return nil, fmt.Errorf("invalid response format from shortener service")
+		c.logger.Error(errInvalidResponseFormatMsg)
+		return nil, fmt.Errorf(errInvalidResponseFormat)
 	}
 
 	link := &domain.LinkResponse{
@@ -191,39 +207,51 @@ func (c *ShortenerHTTPClient) ListLinksInWorkspace(
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		c.logger.Error("failed to create request", zap.Error(err))
-		return nil, 0, fmt.Errorf("failed to create request: %w", err)
+		c.logger.Error(errFailedCreateRequest, zap.Error(err))
+		return nil, 0, fmt.Errorf(errFormat, errFailedCreateRequest, err)
 	}
 
 	if jwtToken != "" {
-		httpReq.Header.Set("Authorization", "Bearer "+jwtToken)
+		httpReq.Header.Set(authorizationHeader, bearerPrefix+jwtToken)
 	}
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
-		c.logger.Error("failed to call shortener service", zap.Error(err))
-		return nil, 0, fmt.Errorf("failed to call shortener service: %w", err)
+		c.logger.Error(errFailedCallService, zap.Error(err))
+		return nil, 0, fmt.Errorf(errFormat, errFailedCallService, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		c.logger.Error("shortener service error", zap.Int("status_code", resp.StatusCode), zap.String("body", string(body)))
-		return nil, 0, fmt.Errorf("shortener service returned status %d", resp.StatusCode)
+		c.logger.Error(errServiceError, zap.Int("status_code", resp.StatusCode), zap.String("body", string(body)))
+		return nil, 0, fmt.Errorf(errServiceReturnedStatus, resp.StatusCode)
 	}
 
 	var result map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		c.logger.Error("failed to decode response", zap.Error(err))
-		return nil, 0, fmt.Errorf("failed to decode response: %w", err)
+		c.logger.Error(errFailedDecode, zap.Error(err))
+		return nil, 0, fmt.Errorf(errFormat, errFailedDecode, err)
 	}
 
 	data, ok := result["data"].(map[string]interface{})
 	if !ok {
-		c.logger.Error("invalid response format")
-		return nil, 0, fmt.Errorf("invalid response format from shortener service")
+		c.logger.Error(errInvalidResponseFormatMsg)
+		return nil, 0, fmt.Errorf(errInvalidResponseFormat)
 	}
 
+	links := c.parseLinksFromData(data)
+
+	var total int64
+	if v, ok := data["total"].(float64); ok {
+		total = int64(v)
+	}
+
+	return links, total, nil
+}
+
+// parseLinksFromData extracts links from response data
+func (c *ShortenerHTTPClient) parseLinksFromData(data map[string]interface{}) []domain.LinkResponse {
 	var links []domain.LinkResponse
 	if linksData, ok := data["links"].([]interface{}); ok {
 		for _, item := range linksData {
@@ -243,13 +271,7 @@ func (c *ShortenerHTTPClient) ListLinksInWorkspace(
 			}
 		}
 	}
-
-	var total int64
-	if v, ok := data["total"].(float64); ok {
-		total = int64(v)
-	}
-
-	return links, total, nil
+	return links
 }
 
 // UpdateLink updates a link
@@ -276,44 +298,44 @@ func (c *ShortenerHTTPClient) UpdateLink(
 
 	body, err := json.Marshal(payload)
 	if err != nil {
-		c.logger.Error("failed to marshal request", zap.Error(err))
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
+		c.logger.Error(errFailedMarshal, zap.Error(err))
+		return nil, fmt.Errorf(errFormat, errFailedMarshal, err)
 	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPut, c.baseURL+"/api/v1/shorten/"+linkID, bytes.NewBuffer(body))
 	if err != nil {
-		c.logger.Error("failed to create request", zap.Error(err))
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		c.logger.Error(errFailedCreateRequest, zap.Error(err))
+		return nil, fmt.Errorf(errFormat, errFailedCreateRequest, err)
 	}
 
-	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set(contentTypeHeader, contentTypeJSON)
 	if jwtToken != "" {
-		httpReq.Header.Set("Authorization", "Bearer "+jwtToken)
+		httpReq.Header.Set(authorizationHeader, bearerPrefix+jwtToken)
 	}
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
-		c.logger.Error("failed to call shortener service", zap.Error(err))
-		return nil, fmt.Errorf("failed to call shortener service: %w", err)
+		c.logger.Error(errFailedCallService, zap.Error(err))
+		return nil, fmt.Errorf(errFormat, errFailedCallService, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		c.logger.Error("shortener service error", zap.Int("status_code", resp.StatusCode), zap.String("body", string(body)))
-		return nil, fmt.Errorf("shortener service returned status %d", resp.StatusCode)
+		c.logger.Error(errServiceError, zap.Int("status_code", resp.StatusCode), zap.String("body", string(body)))
+		return nil, fmt.Errorf(errServiceReturnedStatus, resp.StatusCode)
 	}
 
 	var result map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		c.logger.Error("failed to decode response", zap.Error(err))
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+		c.logger.Error(errFailedDecode, zap.Error(err))
+		return nil, fmt.Errorf(errFormat, errFailedDecode, err)
 	}
 
 	data, ok := result["data"].(map[string]interface{})
 	if !ok {
-		c.logger.Error("invalid response format")
-		return nil, fmt.Errorf("invalid response format from shortener service")
+		c.logger.Error(errInvalidResponseFormatMsg)
+		return nil, fmt.Errorf(errInvalidResponseFormat)
 	}
 
 	link := &domain.LinkResponse{
@@ -336,25 +358,25 @@ func (c *ShortenerHTTPClient) UpdateLink(
 func (c *ShortenerHTTPClient) DeleteLink(ctx context.Context, linkID string, userID, jwtToken string) error {
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.baseURL+"/api/v1/shorten/"+linkID, nil)
 	if err != nil {
-		c.logger.Error("failed to create request", zap.Error(err))
-		return fmt.Errorf("failed to create request: %w", err)
+		c.logger.Error(errFailedCreateRequest, zap.Error(err))
+		return fmt.Errorf(errFormat, errFailedCreateRequest, err)
 	}
 
 	if jwtToken != "" {
-		httpReq.Header.Set("Authorization", "Bearer "+jwtToken)
+		httpReq.Header.Set(authorizationHeader, bearerPrefix+jwtToken)
 	}
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
-		c.logger.Error("failed to call shortener service", zap.Error(err))
-		return fmt.Errorf("failed to call shortener service: %w", err)
+		c.logger.Error(errFailedCallService, zap.Error(err))
+		return fmt.Errorf(errFormat, errFailedCallService, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		c.logger.Error("shortener service error", zap.Int("status_code", resp.StatusCode), zap.String("body", string(body)))
-		return fmt.Errorf("shortener service returned status %d", resp.StatusCode)
+		c.logger.Error(errServiceError, zap.Int("status_code", resp.StatusCode), zap.String("body", string(body)))
+		return fmt.Errorf(errServiceReturnedStatus, resp.StatusCode)
 	}
 
 	return nil

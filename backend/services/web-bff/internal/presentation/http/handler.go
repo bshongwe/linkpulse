@@ -10,6 +10,10 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	linkIDRoute = "/links/:linkID"
+)
+
 // Handler handles HTTP requests for the BFF
 type Handler struct {
 	bffService *application.BFFService
@@ -32,13 +36,13 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 		// Link management
 		api.POST("/links", h.CreateLink)
 		api.GET("/links", h.ListLinks)
-		api.GET("/links/:linkID", h.GetLink)
-		api.PUT("/links/:linkID", h.UpdateLink)
-		api.DELETE("/links/:linkID", h.DeleteLink)
+		api.GET(linkIDRoute, h.GetLink)
+		api.PUT(linkIDRoute, h.UpdateLink)
+		api.DELETE(linkIDRoute, h.DeleteLink)
 
 		// Analytics
 		api.GET("/dashboard", h.GetDashboard)
-		api.GET("/links/:linkID/analytics", h.GetLinkAnalytics)
+		api.GET(linkIDRoute+"/analytics", h.GetLinkAnalytics)
 	}
 }
 
