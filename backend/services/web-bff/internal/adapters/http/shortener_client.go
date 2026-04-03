@@ -76,7 +76,12 @@ func (c *ShortenerHTTPClient) CreateLink(
 
 	httpReq.Header.Set("Content-Type", "application/json")
 	if jwtToken != "" {
-		httpReq.Header.Set("Authorization", "Bearer "+jwtToken)
+		authHeader := "Bearer " + jwtToken
+		httpReq.Header.Set("Authorization", authHeader)
+		c.logger.Info("CreateLink: forwarding JWT token to shortener", 
+			zap.Int("token_length", len(jwtToken)))
+	} else {
+		c.logger.Warn("CreateLink: no JWT token provided")
 	}
 
 	resp, err := c.httpClient.Do(httpReq)
