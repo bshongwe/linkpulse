@@ -48,6 +48,8 @@ func (h *Handler) CreateLink(c *gin.Context) {
 	workspaceID := c.GetString("workspace_id")
 	jwtToken := c.GetString("jwt_token")
 
+	h.logger.Error("DEBUG: CreateLink called", zap.String("userID", userID), zap.String("workspaceID", workspaceID), zap.Int("token_len", len(jwtToken)))
+
 	if userID == "" || workspaceID == "" {
 		c.JSON(http.StatusUnauthorized, domain.ErrorResponse{
 			Error:  "missing user or workspace context",

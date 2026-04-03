@@ -13,7 +13,31 @@ import (
 // AuthMiddleware extracts JWT claims from the request header
 func AuthMiddleware(jwtSecret string, logger *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token, err := extractAndValidateToken(c, jwtSecret, logger)
+		// Extract raw token string
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error":  "missing authorization header",
+				"status": http.StatusUnauthorized,
+			})
+			c.Abort()
+			return
+		}
+
+		parts := strings.Split(authHeader, " ")
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error":  "invalid authorization header format",
+				"status": http.StatusUnauthorized,
+			})
+			c.Abort()
+			return
+		}
+
+		tokenString := parts[1]
+
+		// Validate token
+		token, err := validateToken(tokenString, jwtSecret, logger)
 		if err != nil || !token.Valid {
 			c.Abort()
 			return
@@ -29,7 +53,7 @@ func AuthMiddleware(jwtSecret string, logger *zap.Logger) gin.HandlerFunc {
 			return
 		}
 
-		if !setContextFromClaims(c, claims) {
+		if !setContextFromClaims(c, claims, tokenString) {
 			c.Abort()
 			return
 		}
@@ -38,26 +62,7 @@ func AuthMiddleware(jwtSecret string, logger *zap.Logger) gin.HandlerFunc {
 	}
 }
 
-func extractAndValidateToken(c *gin.Context, jwtSecret string, logger *zap.Logger) (*jwt.Token, error) {
-	authHeader := c.GetHeader("Authorization")
-	if authHeader == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error":  "missing authorization header",
-			"status": http.StatusUnauthorized,
-		})
-		return nil, fmt.Errorf("missing auth header")
-	}
-
-	parts := strings.Split(authHeader, " ")
-	if len(parts) != 2 || parts[0] != "Bearer" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error":  "invalid authorization header format",
-			"status": http.StatusUnauthorized,
-		})
-		return nil, fmt.Errorf("invalid auth format")
-	}
-
-	tokenString := parts[1]
+func validateToken(tokenString string, jwtSecret string, logger *zap.Logger) (*jwt.Token, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -67,17 +72,13 @@ func extractAndValidateToken(c *gin.Context, jwtSecret string, logger *zap.Logge
 
 	if err != nil || !token.Valid {
 		logger.Warn("invalid token", zap.Error(err))
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error":  "invalid or expired token",
-			"status": http.StatusUnauthorized,
-		})
 		return token, err
 	}
 
 	return token, nil
 }
 
-func setContextFromClaims(c *gin.Context, claims jwt.MapClaims) bool {
+func setContextFromClaims(c *gin.Context, claims jwt.MapClaims, tokenString string) bool {
 	userID, ok := claims["user_id"].(string)
 	if !ok || userID == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{
@@ -94,14 +95,6 @@ func setContextFromClaims(c *gin.Context, claims jwt.MapClaims) bool {
 			"status": http.StatusUnauthorized,
 		})
 		return false
-	}
-
-	// Extract the JWT token from header for passing to backend services
-	authHeader := c.GetHeader("Authorization")
-	parts := strings.Split(authHeader, " ")
-	var tokenString string
-	if len(parts) == 2 && parts[0] == "Bearer" {
-		tokenString = parts[1]
 	}
 
 	c.Set("user_id", userID)
