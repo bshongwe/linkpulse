@@ -96,8 +96,17 @@ func setContextFromClaims(c *gin.Context, claims jwt.MapClaims) bool {
 		return false
 	}
 
+	// Extract the JWT token from header for passing to backend services
+	authHeader := c.GetHeader("Authorization")
+	parts := strings.Split(authHeader, " ")
+	var tokenString string
+	if len(parts) == 2 && parts[0] == "Bearer" {
+		tokenString = parts[1]
+	}
+
 	c.Set("user_id", userID)
 	c.Set("workspace_id", workspaceID)
+	c.Set("jwt_token", tokenString)
 	return true
 }
 

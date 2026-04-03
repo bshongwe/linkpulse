@@ -8,11 +8,11 @@ import (
 
 // ShortenerClient defines the interface for the shortener service
 type ShortenerClient interface {
-	CreateLink(ctx context.Context, req domain.CreateLinkRequest, workspaceID, userID string) (*domain.LinkResponse, error)
-	GetLink(ctx context.Context, shortCode string) (*domain.LinkResponse, error)
-	ListLinksInWorkspace(ctx context.Context, workspaceID string, page, pageSize int) ([]domain.LinkResponse, int64, error)
-	UpdateLink(ctx context.Context, linkID string, req domain.CreateLinkRequest, userID string) (*domain.LinkResponse, error)
-	DeleteLink(ctx context.Context, linkID string, userID string) error
+	CreateLink(ctx context.Context, req domain.CreateLinkRequest, workspaceID, userID, jwtToken string) (*domain.LinkResponse, error)
+	GetLink(ctx context.Context, shortCode, jwtToken string) (*domain.LinkResponse, error)
+	ListLinksInWorkspace(ctx context.Context, workspaceID string, page, pageSize int, jwtToken string) ([]domain.LinkResponse, int64, error)
+	UpdateLink(ctx context.Context, linkID string, req domain.CreateLinkRequest, userID, jwtToken string) (*domain.LinkResponse, error)
+	DeleteLink(ctx context.Context, linkID string, userID, jwtToken string) error
 }
 
 // AnalyticsClient defines the interface for the analytics service

@@ -46,6 +46,7 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 func (h *Handler) CreateLink(c *gin.Context) {
 	userID := c.GetString("user_id")
 	workspaceID := c.GetString("workspace_id")
+	jwtToken := c.GetString("jwt_token")
 
 	if userID == "" || workspaceID == "" {
 		c.JSON(http.StatusUnauthorized, domain.ErrorResponse{
@@ -64,7 +65,7 @@ func (h *Handler) CreateLink(c *gin.Context) {
 		return
 	}
 
-	link, err := h.bffService.CreateShortLink(c.Request.Context(), req, workspaceID, userID)
+	link, err := h.bffService.CreateShortLink(c.Request.Context(), req, workspaceID, userID, jwtToken)
 	if err != nil {
 		h.logger.Error("failed to create link", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, domain.ErrorResponse{
@@ -80,6 +81,7 @@ func (h *Handler) CreateLink(c *gin.Context) {
 // ListLinks lists all links in a workspace
 func (h *Handler) ListLinks(c *gin.Context) {
 	workspaceID := c.GetString("workspace_id")
+	jwtToken := c.GetString("jwt_token")
 	if workspaceID == "" {
 		c.JSON(http.StatusUnauthorized, domain.ErrorResponse{
 			Error:  "missing workspace context",
@@ -103,7 +105,7 @@ func (h *Handler) ListLinks(c *gin.Context) {
 		}
 	}
 
-	links, total, err := h.bffService.ListLinks(c.Request.Context(), workspaceID, page, pageSize)
+	links, total, err := h.bffService.ListLinks(c.Request.Context(), workspaceID, page, pageSize, jwtToken)
 	if err != nil {
 		h.logger.Error("failed to list links", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, domain.ErrorResponse{
@@ -127,6 +129,7 @@ func (h *Handler) ListLinks(c *gin.Context) {
 // GetLink retrieves a single link
 func (h *Handler) GetLink(c *gin.Context) {
 	linkID := c.Param("linkID")
+	jwtToken := c.GetString("jwt_token")
 	if linkID == "" {
 		c.JSON(http.StatusBadRequest, domain.ErrorResponse{
 			Error:  "missing link ID",
@@ -135,7 +138,7 @@ func (h *Handler) GetLink(c *gin.Context) {
 		return
 	}
 
-	link, err := h.bffService.GetShortLink(c.Request.Context(), linkID)
+	link, err := h.bffService.GetShortLink(c.Request.Context(), linkID, jwtToken)
 	if err != nil {
 		h.logger.Error("failed to get link", zap.String("linkID", linkID), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, domain.ErrorResponse{
@@ -152,6 +155,7 @@ func (h *Handler) GetLink(c *gin.Context) {
 func (h *Handler) UpdateLink(c *gin.Context) {
 	userID := c.GetString("user_id")
 	linkID := c.Param("linkID")
+	jwtToken := c.GetString("jwt_token")
 
 	if userID == "" || linkID == "" {
 		c.JSON(http.StatusBadRequest, domain.ErrorResponse{
@@ -170,7 +174,7 @@ func (h *Handler) UpdateLink(c *gin.Context) {
 		return
 	}
 
-	link, err := h.bffService.UpdateLink(c.Request.Context(), linkID, req, userID)
+	link, err := h.bffService.UpdateLink(c.Request.Context(), linkID, req, userID, jwtToken)
 	if err != nil {
 		h.logger.Error("failed to update link", zap.String("linkID", linkID), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, domain.ErrorResponse{
@@ -187,6 +191,7 @@ func (h *Handler) UpdateLink(c *gin.Context) {
 func (h *Handler) DeleteLink(c *gin.Context) {
 	userID := c.GetString("user_id")
 	linkID := c.Param("linkID")
+	jwtToken := c.GetString("jwt_token")
 
 	if userID == "" || linkID == "" {
 		c.JSON(http.StatusBadRequest, domain.ErrorResponse{
@@ -196,7 +201,7 @@ func (h *Handler) DeleteLink(c *gin.Context) {
 		return
 	}
 
-	err := h.bffService.DeleteLink(c.Request.Context(), linkID, userID)
+	err := h.bffService.DeleteLink(c.Request.Context(), linkID, userID, jwtToken)
 	if err != nil {
 		h.logger.Error("failed to delete link", zap.String("linkID", linkID), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, domain.ErrorResponse{

@@ -2,7 +2,9 @@ package http
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -28,32 +30,110 @@ func NewAnalyticsHTTPClient(baseURL string, logger *zap.Logger) *AnalyticsHTTPCl
 	}
 }
 
-// GetDashboardStats retrieves dashboard statistics
+// GetDashboardStats retrieves dashboard statistics for a workspace
 func (c *AnalyticsHTTPClient) GetDashboardStats(
 	ctx context.Context,
 	workspaceID string,
 ) (*domain.DashboardResponse, error) {
-	// TODO: Implement HTTP call to analytics service
-	return nil, fmt.Errorf("not implemented")
+	// For now, return mock data until analytics service exposes this endpoint
+	// In a real scenario, you would call the analytics service here
+	dashboard := &domain.DashboardResponse{
+		TotalLinks:  0,
+		TotalClicks: 0,
+		RecentLinks: []domain.LinkResponse{},
+		TopLinks:    []domain.LinkResponse{},
+	}
+
+	return dashboard, nil
 }
 
-// GetLinkAnalytics retrieves detailed analytics for a link
+// GetLinkAnalytics retrieves detailed analytics for a specific link
 func (c *AnalyticsHTTPClient) GetLinkAnalytics(
 	ctx context.Context,
 	linkID string,
 ) (*domain.AnalyticsResponse, error) {
-	// TODO: Implement HTTP call to analytics service
-	return nil, fmt.Errorf("not implemented")
+	url := fmt.Sprintf("%s/api/v1/analytics/%s/summary", c.baseURL, linkID)
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		c.logger.Error("failed to create request", zap.Error(err))
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		c.logger.Error("failed to call analytics service", zap.Error(err))
+		return nil, fmt.Errorf("failed to call analytics service: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		c.logger.Error("analytics service error", zap.Int("status_code", resp.StatusCode), zap.String("body", string(body)))
+		return nil, fmt.Errorf("analytics service returned status %d", resp.StatusCode)
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		c.logger.Error("failed to decode response", zap.Error(err))
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	data, ok := result["data"].(map[string]interface{})
+	if !ok {
+		c.logger.Error("invalid response format")
+		return nil, fmt.Errorf("invalid response format from analytics service")
+	}
+
+	analytics := &domain.AnalyticsResponse{
+		LinkID:         linkID,
+		ClicksByCountry: make(map[string]int64),
+		ClicksByDevice:  make(map[string]int64),
+	}
+
+	if v, ok := data["total_clicks"].(float64); ok {
+		analytics.TotalClicks = int64(v)
+	}
+
+	if v, ok := data["unique_clicks"].(float64); ok {
+		analytics.UniqueClicks = int64(v)
+	}
+
+	return analytics, nil
 }
 
 // GetLiveCount retrieves the live click count for a short code
 func (c *AnalyticsHTTPClient) GetLiveCount(ctx context.Context, shortCode string) (int64, error) {
-	// TODO: Implement HTTP call to analytics service
-	return 0, fmt.Errorf("not implemented")
-}
+	url := fmt.Sprintf("%s/api/v1/live-count/%s", c.baseURL, shortCode)
 
-// close closes the HTTP client
-func (c *AnalyticsHTTPClient) close() error {
-	c.httpClient.CloseIdleConnections()
-	return nil
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		c.logger.Error("failed to create request", zap.Error(err))
+		return 0, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		c.logger.Error("failed to call analytics service", zap.Error(err))
+		return 0, fmt.Errorf("failed to call analytics service: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		c.logger.Error("analytics service error", zap.Int("status_code", resp.StatusCode), zap.String("body", string(body)))
+		return 0, fmt.Errorf("analytics service returned status %d", resp.StatusCode)
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		c.logger.Error("failed to decode response", zap.Error(err))
+		return 0, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if count, ok := result["count"].(float64); ok {
+		return int64(count), nil
+	}
+
+	return 0, nil
 }

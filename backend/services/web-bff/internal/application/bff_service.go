@@ -33,13 +33,13 @@ func NewBFFService(
 func (s *BFFService) CreateShortLink(
 	ctx context.Context,
 	req domain.CreateLinkRequest,
-	workspaceID, userID string,
+	workspaceID, userID, jwtToken string,
 ) (*domain.LinkResponse, error) {
 	if workspaceID == "" || userID == "" {
 		return nil, fmt.Errorf("workspace_id and user_id are required")
 	}
 
-	resp, err := s.shortenerClient.CreateLink(ctx, req, workspaceID, userID)
+	resp, err := s.shortenerClient.CreateLink(ctx, req, workspaceID, userID, jwtToken)
 	if err != nil {
 		s.logger.Error("failed to create short link",
 			zap.String("workspace_id", workspaceID),
@@ -53,12 +53,12 @@ func (s *BFFService) CreateShortLink(
 }
 
 // GetShortLink retrieves a short link
-func (s *BFFService) GetShortLink(ctx context.Context, shortCode string) (*domain.LinkResponse, error) {
+func (s *BFFService) GetShortLink(ctx context.Context, shortCode, jwtToken string) (*domain.LinkResponse, error) {
 	if shortCode == "" {
 		return nil, fmt.Errorf("short_code is required")
 	}
 
-	resp, err := s.shortenerClient.GetLink(ctx, shortCode)
+	resp, err := s.shortenerClient.GetLink(ctx, shortCode, jwtToken)
 	if err != nil {
 		s.logger.Error("failed to get short link",
 			zap.String("short_code", shortCode),
@@ -75,6 +75,7 @@ func (s *BFFService) ListLinks(
 	ctx context.Context,
 	workspaceID string,
 	page, pageSize int,
+	jwtToken string,
 ) ([]domain.LinkResponse, int64, error) {
 	if workspaceID == "" {
 		return nil, 0, fmt.Errorf("workspace_id is required")
@@ -87,7 +88,7 @@ func (s *BFFService) ListLinks(
 		pageSize = 20
 	}
 
-	links, total, err := s.shortenerClient.ListLinksInWorkspace(ctx, workspaceID, page, pageSize)
+	links, total, err := s.shortenerClient.ListLinksInWorkspace(ctx, workspaceID, page, pageSize, jwtToken)
 	if err != nil {
 		s.logger.Error("failed to list links",
 			zap.String("workspace_id", workspaceID),
@@ -141,13 +142,13 @@ func (s *BFFService) UpdateLink(
 	ctx context.Context,
 	linkID string,
 	req domain.CreateLinkRequest,
-	userID string,
+	userID, jwtToken string,
 ) (*domain.LinkResponse, error) {
 	if linkID == "" || userID == "" {
 		return nil, fmt.Errorf("link_id and user_id are required")
 	}
 
-	resp, err := s.shortenerClient.UpdateLink(ctx, linkID, req, userID)
+	resp, err := s.shortenerClient.UpdateLink(ctx, linkID, req, userID, jwtToken)
 	if err != nil {
 		s.logger.Error("failed to update link",
 			zap.String("link_id", linkID),
@@ -161,12 +162,12 @@ func (s *BFFService) UpdateLink(
 }
 
 // DeleteLink deletes a link
-func (s *BFFService) DeleteLink(ctx context.Context, linkID string, userID string) error {
+func (s *BFFService) DeleteLink(ctx context.Context, linkID string, userID, jwtToken string) error {
 	if linkID == "" || userID == "" {
 		return fmt.Errorf("link_id and user_id are required")
 	}
 
-	err := s.shortenerClient.DeleteLink(ctx, linkID, userID)
+	err := s.shortenerClient.DeleteLink(ctx, linkID, userID, jwtToken)
 	if err != nil {
 		s.logger.Error("failed to delete link",
 			zap.String("link_id", linkID),
