@@ -151,7 +151,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_API_BASE: "http://localhost:8080"
+      NEXT_PUBLIC_API_BASE: "http://localhost:8082"
+      NEXT_PUBLIC_AUTH_BASE: "http://localhost:8081"
     depends_on:
       - auth-service
       - shortener-service
