@@ -27,6 +27,7 @@ func NewHandler(bffService *application.BFFService, logger *zap.Logger) *Handler
 // RegisterRoutes registers all BFF routes
 func (h *Handler) RegisterRoutes(router *gin.Engine) {
 	api := router.Group("/api/v1/bff")
+	api.Use(AuthMiddleware("super-secret-access-key-change-in-production-2026", h.logger))
 	{
 		// Link management
 		api.POST("/links", h.CreateLink)
