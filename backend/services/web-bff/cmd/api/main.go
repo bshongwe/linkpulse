@@ -12,6 +12,7 @@ import (
 	httpadapters "github.com/bshongwe/linkpulse/backend/services/web-bff/internal/adapters/http"
 	"github.com/bshongwe/linkpulse/backend/services/web-bff/internal/application"
 	httphandlers "github.com/bshongwe/linkpulse/backend/services/web-bff/internal/presentation/http"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -73,6 +74,16 @@ func main() {
 	router := gin.New()
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
+
+	// Configure CORS middleware
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:3001"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Authorization", "Content-Type"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	// Register health check
 	router.GET("/health", func(c *gin.Context) {
