@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -13,6 +14,12 @@ import (
 // AuthMiddleware extracts JWT claims from the request header
 func AuthMiddleware(jwtSecret string, logger *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Allow CORS preflight requests to pass through without authentication
+		if c.Request.Method == http.MethodOptions {
+			c.Next()
+			return
+		}
+
 		// Extract raw token string
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -83,6 +90,17 @@ func validateToken(tokenString string, jwtSecret string, logger *zap.Logger) (*j
 }
 
 func setContextFromClaims(c *gin.Context, claims jwt.MapClaims, tokenString string) bool {
+	// Check token expiration (exp claim)
+	if exp, ok := claims["exp"].(float64); ok {
+		if time.Now().Unix() > int64(exp) {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error":  "token expired",
+				"status": http.StatusUnauthorized,
+			})
+			return false
+		}
+	}
+
 	userID, ok := claims["user_id"].(string)
 	if !ok || userID == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{

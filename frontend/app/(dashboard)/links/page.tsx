@@ -24,14 +24,14 @@ export default function LinksPage() {
       return;
     }
     setUser(currentUser);
-    fetchLinks(currentUser.workspace_id || 'default');
+    fetchLinks();
   }, [router]);
 
-  const fetchLinks = async (workspaceId: string) => {
+  const fetchLinks = async () => {
     try {
       setLoading(true);
       setError('');
-      const result = await listLinks(workspaceId);
+      const result = await listLinks();
       setLinks(result || []);
     } catch (err: any) {
       console.error('Failed to fetch links:', err);

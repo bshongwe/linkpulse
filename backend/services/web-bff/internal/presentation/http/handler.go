@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	linkIDRoute            = "/links/:linkID"
+	linkIDRoute            = "/links/id/:linkID"
 	shortCodeRoute         = "/links/:shortCode"
 	missingLinkIDError     = "missing link ID"
 	missingShortCodeError  = "missing short code"

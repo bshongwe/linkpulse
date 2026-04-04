@@ -16,7 +16,7 @@ export interface ShortLink {
 
 export interface CreateShortLinkRequest {
   original_url: string;
-  workspace_id: string;
+  workspace_id?: string;  // Optional - BFF extracts from JWT
   created_by?: string;
   title?: string;
   description?: string;

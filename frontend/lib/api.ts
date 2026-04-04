@@ -1,7 +1,9 @@
 import axios, { AxiosInstance } from 'axios';
 import { ShortLink, CreateShortLinkRequest, AnalyticsSummary } from '@/types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8082';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080';
+
+console.log('🔍 API_BASE:', API_BASE); // DEBUG: Log the API base URL
 
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE,
@@ -21,28 +23,31 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Shortened links
+// Shortened links (via BFF)
 export async function createShortLink(data: CreateShortLinkRequest): Promise<ShortLink> {
-  const response = await api.post('/api/v1/shorten', data);
+  const url = '/api/v1/bff/links';
+  console.log('📤 POST', API_BASE + url, 'with data:', data); // DEBUG
+  const response = await api.post(url, data);
+  console.log('✅ Response:', response.data); // DEBUG
   return response.data.data || response.data;
 }
 
 export async function getShortLink(shortCode: string): Promise<ShortLink> {
-  const response = await api.get(`/api/v1/shorten?short_code=${shortCode}`);
+  const response = await api.get(`/api/v1/bff/links/${shortCode}`);
   return response.data.data || response.data;
 }
 
 export async function updateShortLink(linkId: string, data: Partial<ShortLink>): Promise<ShortLink> {
-  const response = await api.put(`/api/v1/shorten/${linkId}`, data);
+  const response = await api.put(`/api/v1/bff/links/id/${linkId}`, data);
   return response.data.data || response.data;
 }
 
 export async function deleteShortLink(linkId: string): Promise<void> {
-  await api.delete(`/api/v1/shorten/${linkId}`);
+  await api.delete(`/api/v1/bff/links/id/${linkId}`);
 }
 
-export async function listLinks(workspaceId: string): Promise<ShortLink[]> {
-  const response = await api.get(`/api/v1/shorten/workspace/${workspaceId}`, {
+export async function listLinks(): Promise<ShortLink[]> {
+  const response = await api.get(`/api/v1/bff/links`, {
     params: {
       page: 1,
       page_size: 100,
@@ -52,14 +57,14 @@ export async function listLinks(workspaceId: string): Promise<ShortLink[]> {
 }
 
 // Analytics
-export async function getAnalytics(shortCode: string): Promise<AnalyticsSummary> {
-  const response = await api.get(`/analytics/${shortCode}`);
+export async function getAnalytics(linkId: string): Promise<AnalyticsSummary> {
+  const response = await api.get(`/api/v1/bff/links/id/${linkId}/analytics`);
   return response.data;
 }
 
-export async function getLiveCount(shortCode: string): Promise<number> {
-  const response = await api.get(`/analytics/${shortCode}/live`);
-  return response.data.count;
+export async function getLiveCount(linkId: string): Promise<number> {
+  const response = await api.get(`/api/v1/bff/links/id/${linkId}/analytics`);
+  return response.data.liveCount || 0;
 }
 
 // Error handling
