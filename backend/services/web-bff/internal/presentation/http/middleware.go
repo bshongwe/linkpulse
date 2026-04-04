@@ -14,6 +14,12 @@ import (
 // AuthMiddleware extracts JWT claims from the request header
 func AuthMiddleware(jwtSecret string, logger *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Allow CORS preflight requests to pass through without authentication
+		if c.Request.Method == http.MethodOptions {
+			c.Next()
+			return
+		}
+
 		// Extract raw token string
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
