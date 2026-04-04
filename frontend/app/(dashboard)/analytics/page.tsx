@@ -15,10 +15,10 @@ export default function AnalyticsPage() {
   useEffect(() => {
     setMounted(true);
     const currentUser = getUser();
-    if (!currentUser) {
-      router.push('/login');
-    } else {
+    if (currentUser) {
       setUser(currentUser);
+    } else {
+      router.push('/login');
     }
   }, [router]);
 
