@@ -11,9 +11,11 @@ import (
 )
 
 const (
-	linkIDRoute           = "/links/:linkID"
-	missingLinkIDError    = "missing link ID"
-	missingAuthContextErr = "missing user or workspace context"
+	linkIDRoute            = "/links/:linkID"
+	shortCodeRoute         = "/links/:shortCode"
+	missingLinkIDError     = "missing link ID"
+	missingShortCodeError  = "missing short code"
+	missingAuthContextErr  = "missing user or workspace context"
 )
 
 // Handler handles HTTP requests for the BFF
@@ -51,18 +53,21 @@ func (h *Handler) requireAuth(c *gin.Context) (userID, workspaceID, jwtToken str
 
 // RegisterRoutes registers all BFF routes
 func (h *Handler) RegisterRoutes(router *gin.Engine, jwtSecret string) {
+	if jwtSecret == "" {
+		h.logger.Fatal("jwt secret is required for secure route registration")
+	}
+
 	api := router.Group("/api/v1/bff")
 	api.Use(AuthMiddleware(jwtSecret, h.logger))
 	{
 		// Link management
 		api.POST("/links", h.CreateLink)
 		api.GET("/links", h.ListLinks)
-		api.GET(linkIDRoute, h.GetLink)
+		api.GET(shortCodeRoute, h.GetLink)
 		api.PUT(linkIDRoute, h.UpdateLink)
 		api.DELETE(linkIDRoute, h.DeleteLink)
 
 		// Analytics
-		api.GET("/dashboard", h.GetDashboard)
 		api.GET(linkIDRoute+"/analytics", h.GetLinkAnalytics)
 	}
 }
@@ -139,25 +144,25 @@ func (h *Handler) ListLinks(c *gin.Context) {
 	})
 }
 
-// GetLink retrieves a single link
+// GetLink retrieves a single link by short code
 func (h *Handler) GetLink(c *gin.Context) {
 	_, _, jwtToken, ok := h.requireAuth(c)
 	if !ok {
 		return
 	}
 
-	linkID := c.Param("linkID")
-	if linkID == "" {
+	shortCode := c.Param("shortCode")
+	if shortCode == "" {
 		c.JSON(http.StatusBadRequest, domain.ErrorResponse{
-			Error:  missingLinkIDError,
+			Error:  missingShortCodeError,
 			Status: http.StatusBadRequest,
 		})
 		return
 	}
 
-	link, err := h.bffService.GetShortLink(c.Request.Context(), linkID, jwtToken)
+	link, err := h.bffService.GetShortLink(c.Request.Context(), shortCode, jwtToken)
 	if err != nil {
-		h.logger.Error("failed to get link", zap.String("linkID", linkID), zap.Error(err))
+		h.logger.Error("failed to get link", zap.String("shortCode", shortCode), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, domain.ErrorResponse{
 			Error:  "failed to get link",
 			Status: http.StatusInternalServerError,
@@ -232,7 +237,7 @@ func (h *Handler) DeleteLink(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusNoContent, nil)
+	c.Status(http.StatusNoContent)
 }
 
 // GetDashboard retrieves dashboard data
