@@ -28,6 +28,12 @@ func main() {
 		fmt.Sscanf(p, "%d", &port)
 	}
 
+	// Get JWT secret from environment
+	jwtSecret := os.Getenv("LINKPULSE_JWT_ACCESS_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "super-secret-access-key-change-in-production-2026"
+	}
+
 	// Initialize logger
 	var log *zap.Logger
 	var err error
@@ -73,8 +79,8 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
 	})
 
-	// Register BFF routes
-	handler.RegisterRoutes(router)
+	// Register BFF routes with JWT secret
+	handler.RegisterRoutes(router, jwtSecret)
 
 	// Create HTTP server
 	server := &http.Server{

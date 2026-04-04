@@ -39,6 +39,10 @@ func AuthMiddleware(jwtSecret string, logger *zap.Logger) gin.HandlerFunc {
 		// Validate token
 		token, err := validateToken(tokenString, jwtSecret, logger)
 		if err != nil || !token.Valid {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error":  "invalid or expired token",
+				"status": http.StatusUnauthorized,
+			})
 			c.Abort()
 			return
 		}

@@ -29,9 +29,9 @@ func NewHandler(bffService *application.BFFService, logger *zap.Logger) *Handler
 }
 
 // RegisterRoutes registers all BFF routes
-func (h *Handler) RegisterRoutes(router *gin.Engine) {
+func (h *Handler) RegisterRoutes(router *gin.Engine, jwtSecret string) {
 	api := router.Group("/api/v1/bff")
-	api.Use(AuthMiddleware("super-secret-access-key-change-in-production-2026", h.logger))
+	api.Use(AuthMiddleware(jwtSecret, h.logger))
 	{
 		// Link management
 		api.POST("/links", h.CreateLink)
@@ -51,8 +51,6 @@ func (h *Handler) CreateLink(c *gin.Context) {
 	userID := c.GetString("user_id")
 	workspaceID := c.GetString("workspace_id")
 	jwtToken := c.GetString("jwt_token")
-
-	h.logger.Error("DEBUG: CreateLink called", zap.String("userID", userID), zap.String("workspaceID", workspaceID), zap.Int("token_len", len(jwtToken)))
 
 	if userID == "" || workspaceID == "" {
 		c.JSON(http.StatusUnauthorized, domain.ErrorResponse{
