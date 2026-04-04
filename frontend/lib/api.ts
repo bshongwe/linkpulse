@@ -38,12 +38,12 @@ export async function getShortLink(shortCode: string): Promise<ShortLink> {
 }
 
 export async function updateShortLink(linkId: string, data: Partial<ShortLink>): Promise<ShortLink> {
-  const response = await api.put(`/api/v1/bff/links/${linkId}`, data);
+  const response = await api.put(`/api/v1/bff/links//id/${linkId}`, data);
   return response.data.data || response.data;
 }
 
 export async function deleteShortLink(linkId: string): Promise<void> {
-  await api.delete(`/api/v1/bff/links/${linkId}`);
+  await api.delete(`/api/v1/bff/links/id/${linkId}`);
 }
 
 export async function listLinks(): Promise<ShortLink[]> {
@@ -57,13 +57,13 @@ export async function listLinks(): Promise<ShortLink[]> {
 }
 
 // Analytics
-export async function getAnalytics(shortCode: string): Promise<AnalyticsSummary> {
-  const response = await api.get(`/api/v1/bff/links/${shortCode}/analytics`);
+export async function getAnalytics(linkId: string): Promise<AnalyticsSummary> {
+  const response = await api.get(`/api/v1/bff/links/id/${linkId}/analytics`);
   return response.data;
 }
 
-export async function getLiveCount(shortCode: string): Promise<number> {
-  const response = await api.get(`/api/v1/bff/links/${shortCode}/analytics`);
+export async function getLiveCount(linkId: string): Promise<number> {
+  const response = await api.get(`/api/v1/bff/links/id/${linkId}/analytics`);
   return response.data.liveCount || 0;
 }
 
