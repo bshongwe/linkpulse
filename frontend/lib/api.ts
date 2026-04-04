@@ -38,7 +38,7 @@ export async function getShortLink(shortCode: string): Promise<ShortLink> {
 }
 
 export async function updateShortLink(linkId: string, data: Partial<ShortLink>): Promise<ShortLink> {
-  const response = await api.put(`/api/v1/bff/links//id/${linkId}`, data);
+  const response = await api.put(`/api/v1/bff/links/id/${linkId}`, data);
   return response.data.data || response.data;
 }
 
