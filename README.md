@@ -31,7 +31,7 @@ graph TB
     end
     
     User -->|HTTP/CORS| Next
-    Next -->|API Requests<br/>port 8000| CORS
+    Next -->|"API Requests<br/>port 8000"| CORS
     CORS --> Auth
     Auth --> Handler
     Handler --> Service
@@ -416,14 +416,14 @@ LINKPULSE_JWT_ACCESS_SECRET: super-secret-key-change-in-production
 
 The Web BFF (Backend-for-Frontend) Gateway provides:
 
-✅ **Single Entry Point** - All frontend requests through one gateway
-✅ **CORS Management** - Centralized cross-origin configuration
-✅ **Authentication** - JWT validation for all requests
-✅ **Service Orchestration** - Coordinates multiple backend services
-✅ **Request/Response Transformation** - Adapts backend APIs for frontend
-✅ **Error Handling** - Consistent error responses
-✅ **Workspace Isolation** - Multi-tenant data segregation
-✅ **Security Headers** - Comprehensive security configurations
+- ✅ **Single Entry Point** - All frontend requests through one gateway
+- ✅ **CORS Management** - Centralized cross-origin configuration
+- ✅ **Authentication** - JWT validation for all requests
+- ✅ **Service Orchestration** - Coordinates multiple backend services
+- ✅ **Request/Response Transformation** - Adapts backend APIs for frontend
+- ✅ **Error Handling** - Consistent error responses
+- ✅ **Workspace Isolation** - Multi-tenant data segregation
+- ✅ **Security Headers** - Comprehensive security configurations
 
 ## 🚀 Deployment
 
