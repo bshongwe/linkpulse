@@ -69,8 +69,8 @@ services:
       LINKPULSE_OTEL_ENDPOINT: "http://tempo:4317"   # will add observability later
       LINKPULSE_OTEL_SERVICE_NAME: "linkpulse-auth"
       LINKPULSE_OTEL_ENVIRONMENT: "development"
-      LINKPULSE_JWT_ACCESS_SECRET: "super-secret-access-key-change-in-production-2026"
-      LINKPULSE_JWT_REFRESH_SECRET: "super-secret-refresh-key-change-in-production-2026"
+      LINKPULSE_JWT_ACCESS_SECRET: ${LINKPULSE_JWT_ACCESS_SECRET:-super-secret-access-key-change-in-production-2026}
+      LINKPULSE_JWT_REFRESH_SECRET: ${LINKPULSE_JWT_REFRESH_SECRET:-super-secret-refresh-key-change-in-production-2026}
       LINKPULSE_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:3001"
     depends_on:
       postgres:
@@ -93,8 +93,8 @@ services:
       LINKPULSE_OTEL_ENDPOINT: "http://tempo:4317"
       LINKPULSE_OTEL_SERVICE_NAME: "linkpulse-shortener"
       LINKPULSE_OTEL_ENVIRONMENT: "development"
-      LINKPULSE_JWT_ACCESS_SECRET: "super-secret-access-key-change-in-production-2026"
-      LINKPULSE_JWT_REFRESH_SECRET: "super-secret-refresh-key-change-in-production-2026"
+      LINKPULSE_JWT_ACCESS_SECRET: ${LINKPULSE_JWT_ACCESS_SECRET:-super-secret-access-key-change-in-production-2026}
+      LINKPULSE_JWT_REFRESH_SECRET: ${LINKPULSE_JWT_REFRESH_SECRET:-super-secret-refresh-key-change-in-production-2026}
       LINKPULSE_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:3001"
     depends_on:
       postgres:
