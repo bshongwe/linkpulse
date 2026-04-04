@@ -68,6 +68,7 @@ func (h *Handler) RegisterRoutes(router *gin.Engine, jwtSecret string) {
 		api.DELETE(linkIDRoute, h.DeleteLink)
 
 		// Analytics
+		api.GET("/dashboard", h.GetDashboard)
 		api.GET(linkIDRoute+"/analytics", h.GetLinkAnalytics)
 	}
 }
