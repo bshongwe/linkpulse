@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { Link as LinkIcon, LogOut, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { getUser, removeAuthToken } from '@/lib/auth';
+import { createShortLink, getErrorMessage } from '@/lib/api';
 
 export default function CreateLinkPage() {
   const router = useRouter();
@@ -42,29 +43,19 @@ export default function CreateLinkPage() {
         return;
       }
 
-      const res = await fetch('http://localhost:8082/api/v1/shorten', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        body: JSON.stringify({
-          original_url: originalUrl,
-          workspace_id: user.workspace_id || 'default',
-          custom_alias: customAlias || undefined,
-        }),
+      // Use BFF gateway instead of calling shortener directly
+      // BFF will extract workspace_id from JWT automatically
+      await createShortLink({
+        original_url: originalUrl,
+        custom_alias: customAlias || undefined,
       });
 
-      const data = await res.json();
-
-      if (res.ok) {
-        router.push('/links');
-      } else {
-        setError(data.error || 'Failed to create link');
-      }
-    } catch (err) {
+      // Success - redirect to links page
+      router.push('/links');
+    } catch (err: any) {
       console.error('Create link error:', err);
-      setError('Failed to connect to shortener service');
+      const errorMsg = getErrorMessage(err);
+      setError(errorMsg || 'Failed to create link');
     } finally {
       setLoading(false);
     }

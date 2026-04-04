@@ -3,6 +3,8 @@ import { ShortLink, CreateShortLinkRequest, AnalyticsSummary } from '@/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8080';
 
+console.log('🔍 API_BASE:', API_BASE); // DEBUG: Log the API base URL
+
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE,
   headers: {
@@ -23,7 +25,10 @@ api.interceptors.request.use((config) => {
 
 // Shortened links (via BFF)
 export async function createShortLink(data: CreateShortLinkRequest): Promise<ShortLink> {
-  const response = await api.post('/api/v1/bff/links', data);
+  const url = '/api/v1/bff/links';
+  console.log('📤 POST', API_BASE + url, 'with data:', data); // DEBUG
+  const response = await api.post(url, data);
+  console.log('✅ Response:', response.data); // DEBUG
   return response.data.data || response.data;
 }
 
