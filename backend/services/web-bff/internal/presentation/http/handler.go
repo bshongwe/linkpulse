@@ -11,7 +11,9 @@ import (
 )
 
 const (
-	linkIDRoute = "/links/:linkID"
+	linkIDRoute           = "/links/:linkID"
+	missingLinkIDError    = "missing link ID"
+	missingAuthContextErr = "missing user or workspace context"
 )
 
 // Handler handles HTTP requests for the BFF
@@ -26,6 +28,25 @@ func NewHandler(bffService *application.BFFService, logger *zap.Logger) *Handler
 		bffService: bffService,
 		logger:     logger,
 	}
+}
+
+// requireAuth is a helper that extracts and validates user context from the request
+// Returns userID, workspaceID, jwtToken, and ok status
+// If validation fails, writes an error response and returns ok=false
+func (h *Handler) requireAuth(c *gin.Context) (userID, workspaceID, jwtToken string, ok bool) {
+	userID = c.GetString("user_id")
+	workspaceID = c.GetString("workspace_id")
+	jwtToken = c.GetString("jwt_token")
+
+	if userID == "" || workspaceID == "" {
+		c.JSON(http.StatusUnauthorized, domain.ErrorResponse{
+			Error:  missingAuthContextErr,
+			Status: http.StatusUnauthorized,
+		})
+		return "", "", "", false
+	}
+
+	return userID, workspaceID, jwtToken, true
 }
 
 // RegisterRoutes registers all BFF routes
@@ -48,15 +69,8 @@ func (h *Handler) RegisterRoutes(router *gin.Engine, jwtSecret string) {
 
 // CreateLink creates a new short link
 func (h *Handler) CreateLink(c *gin.Context) {
-	userID := c.GetString("user_id")
-	workspaceID := c.GetString("workspace_id")
-	jwtToken := c.GetString("jwt_token")
-
-	if userID == "" || workspaceID == "" {
-		c.JSON(http.StatusUnauthorized, domain.ErrorResponse{
-			Error:  "missing user or workspace context",
-			Status: http.StatusUnauthorized,
-		})
+	userID, workspaceID, jwtToken, ok := h.requireAuth(c)
+	if !ok {
 		return
 	}
 
@@ -84,13 +98,8 @@ func (h *Handler) CreateLink(c *gin.Context) {
 
 // ListLinks lists all links in a workspace
 func (h *Handler) ListLinks(c *gin.Context) {
-	workspaceID := c.GetString("workspace_id")
-	jwtToken := c.GetString("jwt_token")
-	if workspaceID == "" {
-		c.JSON(http.StatusUnauthorized, domain.ErrorResponse{
-			Error:  "missing workspace context",
-			Status: http.StatusUnauthorized,
-		})
+	_, workspaceID, jwtToken, ok := h.requireAuth(c)
+	if !ok {
 		return
 	}
 
@@ -132,11 +141,15 @@ func (h *Handler) ListLinks(c *gin.Context) {
 
 // GetLink retrieves a single link
 func (h *Handler) GetLink(c *gin.Context) {
+	_, _, jwtToken, ok := h.requireAuth(c)
+	if !ok {
+		return
+	}
+
 	linkID := c.Param("linkID")
-	jwtToken := c.GetString("jwt_token")
 	if linkID == "" {
 		c.JSON(http.StatusBadRequest, domain.ErrorResponse{
-			Error:  "missing link ID",
+			Error:  missingLinkIDError,
 			Status: http.StatusBadRequest,
 		})
 		return
@@ -157,13 +170,15 @@ func (h *Handler) GetLink(c *gin.Context) {
 
 // UpdateLink updates an existing link
 func (h *Handler) UpdateLink(c *gin.Context) {
-	userID := c.GetString("user_id")
-	linkID := c.Param("linkID")
-	jwtToken := c.GetString("jwt_token")
+	userID, _, jwtToken, ok := h.requireAuth(c)
+	if !ok {
+		return
+	}
 
-	if userID == "" || linkID == "" {
+	linkID := c.Param("linkID")
+	if linkID == "" {
 		c.JSON(http.StatusBadRequest, domain.ErrorResponse{
-			Error:  "missing user ID or link ID",
+			Error:  missingLinkIDError,
 			Status: http.StatusBadRequest,
 		})
 		return
@@ -193,13 +208,15 @@ func (h *Handler) UpdateLink(c *gin.Context) {
 
 // DeleteLink deletes a link
 func (h *Handler) DeleteLink(c *gin.Context) {
-	userID := c.GetString("user_id")
-	linkID := c.Param("linkID")
-	jwtToken := c.GetString("jwt_token")
+	userID, _, jwtToken, ok := h.requireAuth(c)
+	if !ok {
+		return
+	}
 
-	if userID == "" || linkID == "" {
+	linkID := c.Param("linkID")
+	if linkID == "" {
 		c.JSON(http.StatusBadRequest, domain.ErrorResponse{
-			Error:  "missing user ID or link ID",
+			Error:  missingLinkIDError,
 			Status: http.StatusBadRequest,
 		})
 		return
@@ -220,17 +237,14 @@ func (h *Handler) DeleteLink(c *gin.Context) {
 
 // GetDashboard retrieves dashboard data
 func (h *Handler) GetDashboard(c *gin.Context) {
-	workspaceID := c.GetString("workspace_id")
-	jwtToken := c.GetString("jwt_token")
-	if workspaceID == "" {
-		c.JSON(http.StatusUnauthorized, domain.ErrorResponse{
-			Error:  "missing workspace context",
-			Status: http.StatusUnauthorized,
-		})
+	_, _, jwtToken, ok := h.requireAuth(c)
+	if !ok {
 		return
 	}
 
-	dashboard, err := h.bffService.GetDashboard(c.Request.Context(), workspaceID, jwtToken)
+	// Note: workspaceID would be needed here if dashboard is workspace-specific
+	// For now, we rely on middleware validation via requireAuth
+	dashboard, err := h.bffService.GetDashboard(c.Request.Context(), c.GetString("workspace_id"), jwtToken)
 	if err != nil {
 		h.logger.Error("failed to get dashboard", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, domain.ErrorResponse{
@@ -245,11 +259,15 @@ func (h *Handler) GetDashboard(c *gin.Context) {
 
 // GetLinkAnalytics retrieves analytics for a link
 func (h *Handler) GetLinkAnalytics(c *gin.Context) {
+	_, _, jwtToken, ok := h.requireAuth(c)
+	if !ok {
+		return
+	}
+
 	linkID := c.Param("linkID")
-	jwtToken := c.GetString("jwt_token")
 	if linkID == "" {
 		c.JSON(http.StatusBadRequest, domain.ErrorResponse{
-			Error:  "missing link ID",
+			Error:  missingLinkIDError,
 			Status: http.StatusBadRequest,
 		})
 		return
