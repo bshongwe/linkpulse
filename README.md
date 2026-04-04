@@ -69,7 +69,7 @@ docker-compose up -d
 
 ## 📦 Project Structure
 
-```
+```text
 linkpulse/
 ├── backend/                          # Go microservices
 │   ├── services/
@@ -153,7 +153,7 @@ sequenceDiagram
 ## 🛡️ Security Features
 
 ### CORS Configuration
-```
+```text
 Allowed Origins: http://localhost:3000, http://localhost:3001
 Allowed Methods: GET, POST, PUT, DELETE, OPTIONS
 Allowed Headers: Authorization, Content-Type
@@ -161,7 +161,7 @@ Credentials: true
 ```
 
 ### Security Headers
-```
+```text
 X-Content-Type-Options: nosniff          # Prevent MIME sniffing
 X-Frame-Options: DENY                     # Prevent clickjacking
 X-XSS-Protection: 1; mode=block          # XSS protection
