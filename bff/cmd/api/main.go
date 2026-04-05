@@ -54,17 +54,31 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
+	// Get service URLs from environment with defaults
+	shortenerURL := os.Getenv("LINKPULSE_SHORTENER_SERVICE_URL")
+	if shortenerURL == "" {
+		shortenerURL = "http://shortener-service:8082"
+	}
+	analyticsURL := os.Getenv("LINKPULSE_ANALYTICS_SERVICE_URL")
+	if analyticsURL == "" {
+		analyticsURL = "http://analytics-service:8082"
+	}
+	authURL := os.Getenv("LINKPULSE_AUTH_SERVICE_URL")
+	if authURL == "" {
+		authURL = "http://auth-service:8081"
+	}
+
 	// Initialize HTTP clients (adapters)
 	shortenerClient := httpadapters.NewShortenerHTTPClient(
-		"http://shortener-service:8082",
+		shortenerURL,
 		log,
 	)
 	analyticsClient := httpadapters.NewAnalyticsHTTPClient(
-		"http://analytics-service:8083",
+		analyticsURL,
 		log,
 	)
 	authClient := httpadapters.NewAuthHTTPClient(
-		"http://auth-service:8081",
+		authURL,
 		log,
 	)
 
@@ -74,6 +88,12 @@ func main() {
 		analyticsClient,
 		authClient,
 		log,
+	)
+
+	log.Info("BFF service initialized",
+		zap.String("shortener_url", shortenerURL),
+		zap.String("analytics_url", analyticsURL),
+		zap.String("auth_url", authURL),
 	)
 
 	// Create HTTP handler

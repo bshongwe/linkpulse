@@ -125,18 +125,21 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Web BFF Service
+  # Web BFF Service (Standalone)
   web-bff:
     build:
-      context: ./backend
-      dockerfile: services/web-bff/Dockerfile
+      context: ./bff
+      dockerfile: Dockerfile
     container_name: linkpulse-web-bff
     ports:
-      - "8000:8080"
+      - "8080:8080"
     environment:
       LINKPULSE_SERVER_PORT: 8080
       LINKPULSE_ENVIRONMENT: "development"
       LINKPULSE_JWT_ACCESS_SECRET: ${LINKPULSE_JWT_ACCESS_SECRET:-super-secret-access-key-change-in-production-2026}
+      LINKPULSE_AUTH_SERVICE_URL: "http://auth-service:8081"
+      LINKPULSE_SHORTENER_SERVICE_URL: "http://shortener-service:8082"
+      LINKPULSE_ANALYTICS_SERVICE_URL: "http://analytics-service:8082"
     depends_on:
       - auth-service
       - shortener-service
@@ -152,7 +155,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_API_BASE: "http://localhost:8000"
+      NEXT_PUBLIC_API_BASE: "http://localhost:8080"
       NEXT_PUBLIC_AUTH_BASE: "http://localhost:8081"
     depends_on:
       - auth-service
