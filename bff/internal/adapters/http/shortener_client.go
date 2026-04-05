@@ -37,7 +37,23 @@ func (c *ShortenerHTTPClient) CreateLink(
 	req domain.CreateLinkRequest,
 	workspaceID, userID, jwtToken string,
 ) (*domain.LinkResponse, error) {
-	body, err := json.Marshal(req)
+	// Map BFF request to shortener service request
+	shortenerReq := map[string]interface{}{
+		"original_url": req.URL,
+		"workspace_id": workspaceID,
+		"created_by":   userID,
+	}
+	if req.Custom != nil {
+		shortenerReq["custom_alias"] = *req.Custom
+	}
+	if req.ExpiresAt != nil {
+		shortenerReq["expires_at"] = req.ExpiresAt.Unix() * 1000 // Convert to milliseconds
+	}
+	if len(req.Tags) > 0 {
+		shortenerReq["tags"] = req.Tags
+	}
+
+	body, err := json.Marshal(shortenerReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -45,7 +61,7 @@ func (c *ShortenerHTTPClient) CreateLink(
 	httpReq, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodPost,
-		fmt.Sprintf("%s/api/v1/links", c.baseURL),
+		fmt.Sprintf("%s/api/v1/shorten", c.baseURL),
 		bytes.NewReader(body),
 	)
 	if err != nil {
@@ -85,7 +101,7 @@ func (c *ShortenerHTTPClient) GetLink(ctx context.Context, shortCode, jwtToken s
 	httpReq, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
-		fmt.Sprintf("%s/api/v1/links/%s", c.baseURL, shortCode),
+		fmt.Sprintf("%s/api/v1/shorten?short_code=%s", c.baseURL, shortCode),
 		nil,
 	)
 	if err != nil {
@@ -123,7 +139,7 @@ func (c *ShortenerHTTPClient) ListLinksInWorkspace(
 	page, pageSize int,
 	jwtToken string,
 ) ([]domain.LinkResponse, int64, error) {
-	url := fmt.Sprintf("%s/api/v1/workspaces/%s/links?page=%d&pageSize=%d", c.baseURL, workspaceID, page, pageSize)
+	url := fmt.Sprintf("%s/api/v1/shorten/workspace/%s?page=%d&pageSize=%d", c.baseURL, workspaceID, page, pageSize)
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -159,7 +175,7 @@ func (c *ShortenerHTTPClient) DeleteLink(ctx context.Context, shortCode, jwtToke
 	httpReq, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodDelete,
-		fmt.Sprintf("%s/api/v1/links/%s", c.baseURL, shortCode),
+		fmt.Sprintf("%s/api/v1/shorten/%s", c.baseURL, shortCode),
 		nil,
 	)
 	if err != nil {

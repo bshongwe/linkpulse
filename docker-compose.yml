@@ -151,6 +151,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE: "http://localhost:8080"
+        NEXT_PUBLIC_AUTH_BASE: "http://localhost:8081"
     container_name: linkpulse-frontend
     ports:
       - "3000:3000"
