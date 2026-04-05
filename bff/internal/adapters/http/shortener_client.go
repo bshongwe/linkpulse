@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/bshongwe/linkpulse/bff/internal/domain"
 	"go.uber.org/zap"
@@ -24,7 +25,7 @@ func NewShortenerHTTPClient(baseURL string, logger *zap.Logger) *ShortenerHTTPCl
 	return &ShortenerHTTPClient{
 		baseURL: baseURL,
 		client: &http.Client{
-			Timeout: 5 * context.Background().Done(),
+			Timeout: 10 * time.Second,
 		},
 		logger: logger,
 	}

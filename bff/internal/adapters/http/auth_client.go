@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"go.uber.org/zap"
 )
@@ -21,7 +22,7 @@ func NewAuthHTTPClient(baseURL string, logger *zap.Logger) *AuthHTTPClient {
 	return &AuthHTTPClient{
 		baseURL: baseURL,
 		client: &http.Client{
-			Timeout: 5 * context.Background().Done(),
+			Timeout: 10 * time.Second,
 		},
 		logger: logger,
 	}

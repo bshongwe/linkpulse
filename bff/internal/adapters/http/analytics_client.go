@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/bshongwe/linkpulse/bff/internal/domain"
 	"go.uber.org/zap"
@@ -22,7 +23,7 @@ func NewAnalyticsHTTPClient(baseURL string, logger *zap.Logger) *AnalyticsHTTPCl
 	return &AnalyticsHTTPClient{
 		baseURL: baseURL,
 		client: &http.Client{
-			Timeout: 5 * context.Background().Done(),
+			Timeout: 10 * time.Second,
 		},
 		logger: logger,
 	}
