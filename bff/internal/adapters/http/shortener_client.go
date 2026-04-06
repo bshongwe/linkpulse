@@ -13,6 +13,34 @@ import (
 	"go.uber.org/zap"
 )
 
+// API endpoints
+const (
+	shortenEndpoint          = "/api/v1/shorten"
+	shortenWorkspaceEndpoint = "/api/v1/shorten/workspace"
+)
+
+// Error messages
+const (
+	errFailedCreateRequest  = "failed to create request: %w"
+	errFailedCallService    = "failed to call shortener service: %w"
+	errFailedDecodeResponse = "failed to decode response: %w"
+	errServiceStatusMsg     = "shortener service returned status %d"
+)
+
+// Header names
+const (
+	headerContentType   = "Content-Type"
+	headerAuthorization = "Authorization"
+	headerWorkspaceID   = "X-Workspace-ID"
+	headerUserID        = "X-User-ID"
+)
+
+// Header values
+const (
+	contentTypeJSON = "application/json"
+	bearerPrefix    = "Bearer %s"
+)
+
 // ShortenerHTTPClient implements ports.ShortenerClient
 type ShortenerHTTPClient struct {
 	baseURL string
@@ -61,31 +89,31 @@ func (c *ShortenerHTTPClient) CreateLink(
 	httpReq, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodPost,
-		fmt.Sprintf("%s/api/v1/shorten", c.baseURL),
+		fmt.Sprintf("%s%s", c.baseURL, shortenEndpoint),
 		bytes.NewReader(body),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf(errFailedCreateRequest, err)
 	}
 
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", jwtToken))
-	httpReq.Header.Set("X-Workspace-ID", workspaceID)
-	httpReq.Header.Set("X-User-ID", userID)
+	httpReq.Header.Set(headerContentType, contentTypeJSON)
+	httpReq.Header.Set(headerAuthorization, fmt.Sprintf(bearerPrefix, jwtToken))
+	httpReq.Header.Set(headerWorkspaceID, workspaceID)
+	httpReq.Header.Set(headerUserID, userID)
 
 	resp, err := c.client.Do(httpReq)
 	if err != nil {
 		c.logger.Error("failed to call shortener service",
-			zap.String("endpoint", "/api/v1/links"),
+			zap.String("endpoint", shortenEndpoint),
 			zap.Error(err),
 		)
-		return nil, fmt.Errorf("failed to call shortener service: %w", err)
+		return nil, fmt.Errorf(errFailedCallService, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("shortener service returned status %d: %s", resp.StatusCode, string(bodyBytes))
+		return nil, fmt.Errorf(errServiceStatusMsg+": %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	// Shortener returns {"data": {...}}
@@ -93,7 +121,7 @@ func (c *ShortenerHTTPClient) CreateLink(
 		Data domain.LinkResponse `json:"data"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&envelope); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+		return nil, fmt.Errorf(errFailedDecodeResponse, err)
 	}
 
 	return &envelope.Data, nil
@@ -104,27 +132,27 @@ func (c *ShortenerHTTPClient) GetLink(ctx context.Context, shortCode, jwtToken s
 	httpReq, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
-		fmt.Sprintf("%s/api/v1/shorten?short_code=%s", c.baseURL, shortCode),
+		fmt.Sprintf("%s%s?short_code=%s", c.baseURL, shortenEndpoint, shortCode),
 		nil,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf(errFailedCreateRequest, err)
 	}
 
-	httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", jwtToken))
+	httpReq.Header.Set(headerAuthorization, fmt.Sprintf(bearerPrefix, jwtToken))
 
 	resp, err := c.client.Do(httpReq)
 	if err != nil {
 		c.logger.Error("failed to call shortener service",
-			zap.String("endpoint", fmt.Sprintf("/api/v1/links/%s", shortCode)),
+			zap.String("endpoint", fmt.Sprintf("%s (short_code=%s)", shortenEndpoint, shortCode)),
 			zap.Error(err),
 		)
-		return nil, fmt.Errorf("failed to call shortener service: %w", err)
+		return nil, fmt.Errorf(errFailedCallService, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("shortener service returned status %d", resp.StatusCode)
+		return nil, fmt.Errorf(errServiceStatusMsg, resp.StatusCode)
 	}
 
 	// Shortener returns {"data": {...}}
@@ -132,7 +160,7 @@ func (c *ShortenerHTTPClient) GetLink(ctx context.Context, shortCode, jwtToken s
 		Data domain.LinkResponse `json:"data"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&envelope); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+		return nil, fmt.Errorf(errFailedDecodeResponse, err)
 	}
 
 	return &envelope.Data, nil
@@ -145,23 +173,23 @@ func (c *ShortenerHTTPClient) ListLinksInWorkspace(
 	page, pageSize int,
 	jwtToken string,
 ) ([]domain.LinkResponse, int64, error) {
-	url := fmt.Sprintf("%s/api/v1/shorten/workspace/%s?page=%d&page_size=%d", c.baseURL, workspaceID, page, pageSize)
+	url := fmt.Sprintf("%s%s/%s?page=%d&page_size=%d", c.baseURL, shortenWorkspaceEndpoint, workspaceID, page, pageSize)
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to create request: %w", err)
+		return nil, 0, fmt.Errorf(errFailedCreateRequest, err)
 	}
 
-	httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", jwtToken))
+	httpReq.Header.Set(headerAuthorization, fmt.Sprintf(bearerPrefix, jwtToken))
 
 	resp, err := c.client.Do(httpReq)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to call shortener service: %w", err)
+		return nil, 0, fmt.Errorf(errFailedCallService, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, 0, fmt.Errorf("shortener service returned status %d", resp.StatusCode)
+		return nil, 0, fmt.Errorf(errServiceStatusMsg, resp.StatusCode)
 	}
 
 	// Shortener returns {"data": {"links": [...], "total": ...}}
@@ -173,7 +201,7 @@ func (c *ShortenerHTTPClient) ListLinksInWorkspace(
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&envelope); err != nil {
-		return nil, 0, fmt.Errorf("failed to decode response: %w", err)
+		return nil, 0, fmt.Errorf(errFailedDecodeResponse, err)
 	}
 
 	return envelope.Data.Links, envelope.Data.Total, nil
@@ -184,23 +212,23 @@ func (c *ShortenerHTTPClient) DeleteLink(ctx context.Context, shortCode, jwtToke
 	httpReq, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodDelete,
-		fmt.Sprintf("%s/api/v1/shorten/%s", c.baseURL, shortCode),
+		fmt.Sprintf("%s%s/%s", c.baseURL, shortenEndpoint, shortCode),
 		nil,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
+		return fmt.Errorf(errFailedCreateRequest, err)
 	}
 
-	httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", jwtToken))
+	httpReq.Header.Set(headerAuthorization, fmt.Sprintf(bearerPrefix, jwtToken))
 
 	resp, err := c.client.Do(httpReq)
 	if err != nil {
-		return fmt.Errorf("failed to call shortener service: %w", err)
+		return fmt.Errorf(errFailedCallService, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("shortener service returned status %d", resp.StatusCode)
+		return fmt.Errorf(errServiceStatusMsg, resp.StatusCode)
 	}
 
 	return nil
