@@ -51,18 +51,18 @@ export async function updateShortLink(linkId: string, data: Partial<ShortLink>):
   return response.data.data || response.data;
 }
 
-export async function deleteShortLink(linkId: string): Promise<void> {
-  await api.delete(`/api/v1/links/id/${linkId}`);
+export async function deleteShortLink(shortCode: string): Promise<void> {
+  await api.delete(`/api/v1/links/${shortCode}`);
 }
 
 export async function listLinks(): Promise<ShortLink[]> {
   const response = await api.get(`/api/v1/links`, {
     params: {
       page: 1,
-      page_size: 100,
+      pageSize: 100,
     },
   });
-  return response.data.data?.links || response.data.data || response.data || [];
+  return response.data.links || response.data.data || response.data || [];
 }
 
 // Analytics

@@ -47,7 +47,7 @@ func (c *ShortenerHTTPClient) CreateLink(
 		shortenerReq["custom_alias"] = *req.Custom
 	}
 	if req.ExpiresAt != nil {
-		shortenerReq["expires_at"] = req.ExpiresAt.Unix() * 1000 // Convert to milliseconds
+		shortenerReq["expires_at"] = req.ExpiresAt.Unix() // Unix seconds, not milliseconds
 	}
 	if len(req.Tags) > 0 {
 		shortenerReq["tags"] = req.Tags
@@ -88,12 +88,15 @@ func (c *ShortenerHTTPClient) CreateLink(
 		return nil, fmt.Errorf("shortener service returned status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
-	var linkResp domain.LinkResponse
-	if err := json.NewDecoder(resp.Body).Decode(&linkResp); err != nil {
+	// Shortener returns {"data": {...}}
+	var envelope struct {
+		Data domain.LinkResponse `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&envelope); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return &linkResp, nil
+	return &envelope.Data, nil
 }
 
 // GetLink retrieves a short link
@@ -124,12 +127,15 @@ func (c *ShortenerHTTPClient) GetLink(ctx context.Context, shortCode, jwtToken s
 		return nil, fmt.Errorf("shortener service returned status %d", resp.StatusCode)
 	}
 
-	var linkResp domain.LinkResponse
-	if err := json.NewDecoder(resp.Body).Decode(&linkResp); err != nil {
+	// Shortener returns {"data": {...}}
+	var envelope struct {
+		Data domain.LinkResponse `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&envelope); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return &linkResp, nil
+	return &envelope.Data, nil
 }
 
 // ListLinksInWorkspace lists all links in a workspace
@@ -139,7 +145,7 @@ func (c *ShortenerHTTPClient) ListLinksInWorkspace(
 	page, pageSize int,
 	jwtToken string,
 ) ([]domain.LinkResponse, int64, error) {
-	url := fmt.Sprintf("%s/api/v1/shorten/workspace/%s?page=%d&pageSize=%d", c.baseURL, workspaceID, page, pageSize)
+	url := fmt.Sprintf("%s/api/v1/shorten/workspace/%s?page=%d&page_size=%d", c.baseURL, workspaceID, page, pageSize)
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -158,16 +164,19 @@ func (c *ShortenerHTTPClient) ListLinksInWorkspace(
 		return nil, 0, fmt.Errorf("shortener service returned status %d", resp.StatusCode)
 	}
 
-	var result struct {
-		Links []domain.LinkResponse `json:"links"`
-		Total int64                 `json:"total"`
+	// Shortener returns {"data": {"links": [...], "total": ...}}
+	var envelope struct {
+		Data struct {
+			Links []domain.LinkResponse `json:"links"`
+			Total int64                 `json:"total"`
+		} `json:"data"`
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&envelope); err != nil {
 		return nil, 0, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return result.Links, result.Total, nil
+	return envelope.Data.Links, envelope.Data.Total, nil
 }
 
 // DeleteLink deletes a short link

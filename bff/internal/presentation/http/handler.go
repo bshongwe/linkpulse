@@ -32,6 +32,7 @@ func (h *Handler) RegisterRoutes(router *gin.Engine, jwtSecret string) {
 	{
 		// Link endpoints
 		api.POST("/links", h.CreateLink)
+		api.GET("/links", h.ListLinksForUser)          // Convenience route using workspace_id from JWT
 		api.GET("/links/:shortCode", h.GetLink)
 		api.GET("/workspaces/:workspaceId/links", h.ListLinks)
 		api.DELETE("/links/:shortCode", h.DeleteLink)
@@ -171,4 +172,49 @@ func (h *Handler) GetWorkspaceAnalytics(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, resp)
+}
+
+// ListLinksForUser handles GET /api/v1/links (convenience route using workspace_id from JWT)
+func (h *Handler) ListLinksForUser(c *gin.Context) {
+	workspaceID := c.GetString("workspace_id")
+	if workspaceID == "" {
+		c.JSON(http.StatusUnauthorized, domain.ErrorResponse{
+			Code:    "UNAUTHORIZED",
+			Message: "workspace_id not found in token",
+		})
+		return
+	}
+
+	page := 1
+	pageSize := 20
+
+	if p := c.Query("page"); p != "" {
+		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+
+	if ps := c.Query("pageSize"); ps != "" {
+		if parsed, err := strconv.Atoi(ps); err == nil && parsed > 0 && parsed <= 100 {
+			pageSize = parsed
+		}
+	}
+
+	jwtToken := c.GetString("jwt_token")
+
+	links, total, err := h.bffService.ListLinks(c.Request.Context(), workspaceID, page, pageSize, jwtToken)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, domain.ErrorResponse{
+			Code:    "FAILED_TO_LIST_LINKS",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"links":     links,
+		"total":     total,
+		"page":      page,
+		"pageSize":  pageSize,
+	})
 }

@@ -736,13 +736,16 @@ func (h *ShortenerHandler) SearchByTag(c *gin.Context) {
 func RegisterRoutes(router gin.IRouter, handler *ShortenerHandler) {
 	group := router.Group("/api/v1/shorten")
 
+	// More specific routes first (before generic ones)
+	group.GET("/workspace/:workspace_id", handler.ListLinksInWorkspace)
+	group.GET("/campaign/:campaign_id", handler.ListLinksByCampaign)
+	group.GET("/search/tag", handler.SearchByTag)
+	group.GET("/:id/stats", handler.GetLinkStats)
+	
+	// Generic routes last (these match broader patterns)
 	group.POST("", handler.CreateShortLink)
 	group.GET("", handler.GetShortLink)
 	group.PUT("/:id", handler.UpdateShortLink)
 	group.POST("/:id/deactivate", handler.DeactivateLink)
 	group.DELETE("/:id", handler.DeleteLink)
-	group.GET("/:id/stats", handler.GetLinkStats)
-	group.GET("/workspace/:workspace_id", handler.ListLinksInWorkspace)
-	group.GET("/campaign/:campaign_id", handler.ListLinksByCampaign)
-	group.GET("/search/tag", handler.SearchByTag)
 }
