@@ -22,10 +22,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
 # Final stage
 FROM alpine:3.19
 
-RUN apk add --no-cache ca-certificates tzdata
-
-# Create non-root user
-RUN addgroup -S app && adduser -S app -G app
+# Install runtime dependencies and create non-root user
+RUN apk add --no-cache ca-certificates tzdata && \
+    addgroup -S app && adduser -S app -G app
 
 WORKDIR /home/app
 
