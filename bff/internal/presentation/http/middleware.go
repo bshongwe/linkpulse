@@ -9,63 +9,66 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// JWTMiddleware validates JWT tokens and extracts claims
+// extractBearerToken pulls the token string from the Authorization header.
+// Returns empty string if the header is missing or malformed.
+func extractBearerToken(c *gin.Context) string {
+	parts := strings.Fields(strings.TrimSpace(c.GetHeader("Authorization")))
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+		return ""
+	}
+	return parts[1]
+}
+
+// parseToken validates the token signature and returns the parsed claims.
+func parseToken(tokenString, secretKey string) (jwt.MapClaims, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(secretKey), nil
+	})
+	if err != nil || !token.Valid {
+		return nil, fmt.Errorf("invalid or expired token")
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, fmt.Errorf("invalid token claims")
+	}
+	return claims, nil
+}
+
+// setContextClaims stores identity values from the token claims into the Gin context.
+func setContextClaims(c *gin.Context, tokenString string, claims jwt.MapClaims) {
+	c.Set("jwt_token", tokenString)
+
+	userID, _ := claims["user_id"].(string)
+	c.Set("user_id", userID)
+
+	// Fall back to user_id as workspace scope until workspaces are fully implemented
+	wsID, _ := claims["workspace_id"].(string)
+	if wsID == "" {
+		wsID = userID
+	}
+	c.Set("workspace_id", wsID)
+	c.Set("claims", claims)
+}
+
+// JWTMiddleware validates Bearer tokens and populates the request context with identity claims.
 func JWTMiddleware(secretKey string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := strings.TrimSpace(c.GetHeader("Authorization"))
-		parts := strings.Fields(authHeader)
-		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "missing or invalid authorization header",
-			})
-			c.Abort()
+		tokenString := extractBearerToken(c)
+		if tokenString == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing or invalid authorization header"})
 			return
 		}
 
-		tokenString := parts[1]
-
-		// Parse and validate token
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-			}
-			return []byte(secretKey), nil
-		})
-
-		if err != nil || !token.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "invalid token",
-			})
-			c.Abort()
+		claims, err := parseToken(tokenString, secretKey)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
 
-		// Extract claims
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "invalid token claims",
-			})
-			c.Abort()
-			return
-		}
-
-		// Store in context for handlers
-		c.Set("jwt_token", tokenString)
-		userID := ""
-		if uid, ok := claims["user_id"].(string); ok {
-			c.Set("user_id", uid)
-			userID = uid
-		}
-		// Use workspace_id from token if present, otherwise fall back to user_id
-		// (single workspace per user until workspaces are fully implemented)
-		if wsID, ok := claims["workspace_id"].(string); ok && wsID != "" {
-			c.Set("workspace_id", wsID)
-		} else {
-			c.Set("workspace_id", userID)
-		}
-		c.Set("claims", claims)
-
+		setContextClaims(c, tokenString, claims)
 		c.Next()
 	}
 }
