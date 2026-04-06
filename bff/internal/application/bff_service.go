@@ -9,6 +9,22 @@ import (
 	"go.uber.org/zap"
 )
 
+// Validation error messages
+const (
+	errWorkspaceIDRequired = "workspace_id is required"
+	errUserIDRequired      = "user_id are required"
+	errShortCodeRequired   = "short_code is required"
+)
+
+// Error message formats
+const (
+	errFailedCreateLink    = "failed to create link: %w"
+	errFailedGetLink       = "failed to get link: %w"
+	errFailedListLinks     = "failed to list links: %w"
+	errFailedDeleteLink    = "failed to delete link: %w"
+	errFailedGetAnalytics  = "failed to get analytics: %w"
+)
+
 // BFFService orchestrates calls to core backend services
 type BFFService struct {
 	shortenerClient ports.ShortenerClient
@@ -39,7 +55,7 @@ func (s *BFFService) CreateShortLink(
 	workspaceID, userID, jwtToken string,
 ) (*domain.LinkResponse, error) {
 	if workspaceID == "" || userID == "" {
-		return nil, fmt.Errorf("workspace_id and user_id are required")
+		return nil, fmt.Errorf(errWorkspaceIDRequired + " and " + errUserIDRequired)
 	}
 
 	resp, err := s.shortenerClient.CreateLink(ctx, req, workspaceID, userID, jwtToken)
@@ -49,7 +65,7 @@ func (s *BFFService) CreateShortLink(
 			zap.String("user_id", userID),
 			zap.Error(err),
 		)
-		return nil, fmt.Errorf("failed to create link: %w", err)
+		return nil, fmt.Errorf(errFailedCreateLink, err)
 	}
 
 	return resp, nil
@@ -58,7 +74,7 @@ func (s *BFFService) CreateShortLink(
 // GetShortLink retrieves a short link
 func (s *BFFService) GetShortLink(ctx context.Context, shortCode, jwtToken string) (*domain.LinkResponse, error) {
 	if shortCode == "" {
-		return nil, fmt.Errorf("short_code is required")
+		return nil, fmt.Errorf(errShortCodeRequired)
 	}
 
 	resp, err := s.shortenerClient.GetLink(ctx, shortCode, jwtToken)
@@ -67,7 +83,7 @@ func (s *BFFService) GetShortLink(ctx context.Context, shortCode, jwtToken strin
 			zap.String("short_code", shortCode),
 			zap.Error(err),
 		)
-		return nil, fmt.Errorf("failed to get link: %w", err)
+		return nil, fmt.Errorf(errFailedGetLink, err)
 	}
 
 	return resp, nil
@@ -81,7 +97,7 @@ func (s *BFFService) ListLinks(
 	jwtToken string,
 ) ([]domain.LinkResponse, int64, error) {
 	if workspaceID == "" {
-		return nil, 0, fmt.Errorf("workspace_id is required")
+		return nil, 0, fmt.Errorf(errWorkspaceIDRequired)
 	}
 
 	if page < 1 {
@@ -97,7 +113,7 @@ func (s *BFFService) ListLinks(
 			zap.String("workspace_id", workspaceID),
 			zap.Error(err),
 		)
-		return nil, 0, fmt.Errorf("failed to list links: %w", err)
+		return nil, 0, fmt.Errorf(errFailedListLinks, err)
 	}
 
 	return links, total, nil
@@ -106,7 +122,7 @@ func (s *BFFService) ListLinks(
 // DeleteShortLink deletes a short link
 func (s *BFFService) DeleteShortLink(ctx context.Context, shortCode, jwtToken string) error {
 	if shortCode == "" {
-		return fmt.Errorf("short_code is required")
+		return fmt.Errorf(errShortCodeRequired)
 	}
 
 	err := s.shortenerClient.DeleteLink(ctx, shortCode, jwtToken)
@@ -115,7 +131,7 @@ func (s *BFFService) DeleteShortLink(ctx context.Context, shortCode, jwtToken st
 			zap.String("short_code", shortCode),
 			zap.Error(err),
 		)
-		return fmt.Errorf("failed to delete link: %w", err)
+		return fmt.Errorf(errFailedDeleteLink, err)
 	}
 
 	return nil
@@ -124,7 +140,7 @@ func (s *BFFService) DeleteShortLink(ctx context.Context, shortCode, jwtToken st
 // GetLinkAnalytics retrieves analytics for a link
 func (s *BFFService) GetLinkAnalytics(ctx context.Context, shortCode, jwtToken string) (*domain.AnalyticsResponse, error) {
 	if shortCode == "" {
-		return nil, fmt.Errorf("short_code is required")
+		return nil, fmt.Errorf(errShortCodeRequired)
 	}
 
 	resp, err := s.analyticsClient.GetLinkAnalytics(ctx, shortCode, jwtToken)
@@ -133,7 +149,7 @@ func (s *BFFService) GetLinkAnalytics(ctx context.Context, shortCode, jwtToken s
 			zap.String("short_code", shortCode),
 			zap.Error(err),
 		)
-		return nil, fmt.Errorf("failed to get analytics: %w", err)
+		return nil, fmt.Errorf(errFailedGetAnalytics, err)
 	}
 
 	return resp, nil
@@ -142,7 +158,7 @@ func (s *BFFService) GetLinkAnalytics(ctx context.Context, shortCode, jwtToken s
 // GetWorkspaceAnalytics retrieves analytics for a workspace
 func (s *BFFService) GetWorkspaceAnalytics(ctx context.Context, workspaceID, jwtToken string) (*domain.AnalyticsResponse, error) {
 	if workspaceID == "" {
-		return nil, fmt.Errorf("workspace_id is required")
+		return nil, fmt.Errorf(errWorkspaceIDRequired)
 	}
 
 	resp, err := s.analyticsClient.GetWorkspaceAnalytics(ctx, workspaceID, jwtToken)
@@ -151,7 +167,7 @@ func (s *BFFService) GetWorkspaceAnalytics(ctx context.Context, workspaceID, jwt
 			zap.String("workspace_id", workspaceID),
 			zap.Error(err),
 		)
-		return nil, fmt.Errorf("failed to get analytics: %w", err)
+		return nil, fmt.Errorf(errFailedGetAnalytics, err)
 	}
 
 	return resp, nil
