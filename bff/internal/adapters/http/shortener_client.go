@@ -209,16 +209,36 @@ func (c *ShortenerHTTPClient) ListLinksInWorkspace(
 
 // DeleteLink deletes a short link
 func (c *ShortenerHTTPClient) DeleteLink(ctx context.Context, shortCode, jwtToken string) error {
+	// Step 1: Resolve shortCode to linkId by fetching the link
+	linkResp, err := c.GetLink(ctx, shortCode, jwtToken)
+	if err != nil {
+		return fmt.Errorf("failed to resolve link for deletion: %w", err)
+	}
+
+	// Step 2: Extract workspace ID from link response
+	// We need to pass workspace_id in the request body to shortener service
+	// For now, use the link's workspace_id
+	deletePayload := map[string]interface{}{
+		"workspace_id": linkResp.WorkspaceID,
+	}
+
+	body, err := json.Marshal(deletePayload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal delete request: %w", err)
+	}
+
+	// Step 3: Call DELETE with the linkId (UUID), not shortCode
 	httpReq, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodDelete,
-		fmt.Sprintf("%s%s/%s", c.baseURL, shortenEndpoint, shortCode),
-		nil,
+		fmt.Sprintf("%s%s/%s", c.baseURL, shortenEndpoint, linkResp.ID),
+		bytes.NewReader(body),
 	)
 	if err != nil {
 		return fmt.Errorf(errFailedCreateRequest, err)
 	}
 
+	httpReq.Header.Set(headerContentType, contentTypeJSON)
 	httpReq.Header.Set(headerAuthorization, fmt.Sprintf(bearerPrefix, jwtToken))
 
 	resp, err := c.client.Do(httpReq)

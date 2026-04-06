@@ -47,13 +47,13 @@ export default function LinksPage() {
     router.push('/login');
   };
 
-  const handleDeleteLink = async (id: string) => {
+  const handleDeleteLink = async (shortCode: string) => {
     if (!confirm('Are you sure you want to delete this link?')) return;
     
     try {
-      setDeleting(id);
-      await deleteShortLink(id);
-      setLinks(links.filter((link) => link.id !== id));
+      setDeleting(shortCode);
+      await deleteShortLink(shortCode);
+      setLinks(links.filter((link) => link.short_code !== shortCode));
     } catch (err: any) {
       console.error('Failed to delete link:', err);
       const errorMsg = err.response?.data?.error || 'Failed to delete link';
@@ -205,8 +205,8 @@ export default function LinksPage() {
                           <Copy className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDeleteLink(link.id)}
-                          disabled={deleting === link.id}
+                          onClick={() => handleDeleteLink(link.short_code)}
+                          disabled={deleting === link.short_code}
                           className="p-2 hover:bg-red-900/20 rounded-lg transition-colors text-zinc-400 hover:text-red-400 disabled:opacity-50"
                           title="Delete link"
                         >

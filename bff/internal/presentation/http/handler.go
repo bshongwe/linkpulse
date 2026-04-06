@@ -90,6 +90,17 @@ func (h *Handler) GetLink(c *gin.Context) {
 // ListLinks handles GET /api/v1/workspaces/:workspaceId/links
 func (h *Handler) ListLinks(c *gin.Context) {
 	workspaceID := c.Param("workspaceId")
+	authWorkspaceID := c.GetString("workspace_id")
+	
+	// SECURITY: Verify requested workspace matches authenticated user's workspace
+	if workspaceID != authWorkspaceID {
+		c.JSON(http.StatusForbidden, domain.ErrorResponse{
+			Code:    "FORBIDDEN",
+			Message: "You do not have access to this workspace",
+		})
+		return
+	}
+	
 	page := 1
 	pageSize := 20
 
@@ -160,6 +171,17 @@ func (h *Handler) GetLinkAnalytics(c *gin.Context) {
 // GetWorkspaceAnalytics handles GET /api/v1/workspaces/:workspaceId/analytics
 func (h *Handler) GetWorkspaceAnalytics(c *gin.Context) {
 	workspaceID := c.Param("workspaceId")
+	authWorkspaceID := c.GetString("workspace_id")
+	
+	// SECURITY: Verify requested workspace matches authenticated user's workspace
+	if workspaceID != authWorkspaceID {
+		c.JSON(http.StatusForbidden, domain.ErrorResponse{
+			Code:    "FORBIDDEN",
+			Message: "You do not have access to this workspace",
+		})
+		return
+	}
+	
 	jwtToken := c.GetString("jwt_token")
 
 	resp, err := h.bffService.GetWorkspaceAnalytics(c.Request.Context(), workspaceID, jwtToken)
