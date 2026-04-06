@@ -23,7 +23,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
 FROM alpine:3.19
 
 # Install runtime dependencies and create non-root user
-RUN apk add --no-cache ca-certificates tzdata && \
+RUN apk add --no-cache ca-certificates tzdata curl && \
     addgroup -S app && adduser -S app -G app
 
 WORKDIR /home/app
@@ -36,6 +36,6 @@ USER app
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+    CMD curl -fsS http://localhost:8080/health || exit 1
 
 CMD ["./bff"]
