@@ -82,13 +82,13 @@ export LINKPULSE_JWT_ACCESS_SECRET=your-secret-key
 # Service URLs (with defaults)
 export LINKPULSE_AUTH_SERVICE_URL=http://auth-service:8081
 export LINKPULSE_SHORTENER_SERVICE_URL=http://shortener-service:8082
-export LINKPULSE_ANALYTICS_SERVICE_URL=http://analytics-service:8082
+export LINKPULSE_ANALYTICS_SERVICE_URL=http://analytics-service:8083
 ```
 
 **Default Service URLs:**
 - Auth Service: `http://auth-service:8081`
 - Shortener Service: `http://shortener-service:8082`
-- Analytics Service: `http://analytics-service:8082`
+- Analytics Service: `http://analytics-service:8083`
 
 ### Docker
 
@@ -212,6 +212,16 @@ curl http://localhost:8080/readiness
 3. **Stateless**: No internal state, scales horizontally
 4. **Interface-Based**: Easy to mock and test
 5. **Minimal Dependencies**: Lightweight and fast
+
+## Code Quality
+
+### Recent Improvements (v2026.04)
+- **Constants Extraction**: Eliminated duplicate string literals across adapters and services
+  - `shortener_client.go`: 10 constants for endpoints, headers, and error messages
+  - `bff_service.go`: 8 constants for validation and error formatting
+- **DRY Principle**: Single source of truth for all error messages and configuration
+- **Docker Optimization**: Merged consecutive RUN instructions to reduce image layers
+- **JWT Middleware**: Robust token extraction and claim validation with proper error handling
 
 ## Contributing
 
