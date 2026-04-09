@@ -74,11 +74,34 @@ func (c *ShortenerHTTPClient) CreateLink(
 	if req.Custom != nil {
 		shortenerReq["custom_alias"] = *req.Custom
 	}
+	if req.Title != nil {
+		shortenerReq["title"] = *req.Title
+	}
+	if req.Description != nil {
+		shortenerReq["description"] = *req.Description
+	}
 	if req.ExpiresAt != nil {
-		shortenerReq["expires_at"] = req.ExpiresAt.Unix() // Unix seconds, not milliseconds
+		// Convert Unix seconds (number) to time object
+		expiresTime := time.Unix(*req.ExpiresAt, 0)
+		shortenerReq["expires_at"] = expiresTime
+	}
+	if req.RedirectType != nil {
+		// Convert frontend redirect type to shortener format
+		// 'permanent' -> '301', 'temporary' -> '302'
+		redirectTypeValue := *req.RedirectType
+		if redirectTypeValue == "permanent" {
+			shortenerReq["redirect_type"] = "301"
+		} else if redirectTypeValue == "temporary" {
+			shortenerReq["redirect_type"] = "302"
+		} else {
+			shortenerReq["redirect_type"] = redirectTypeValue
+		}
 	}
 	if len(req.Tags) > 0 {
 		shortenerReq["tags"] = req.Tags
+	}
+	if req.CampaignID != nil {
+		shortenerReq["campaign_id"] = *req.CampaignID
 	}
 
 	body, err := json.Marshal(shortenerReq)

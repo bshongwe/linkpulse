@@ -76,6 +76,7 @@ func main() {
 	analyticsClient := httpadapters.NewAnalyticsHTTPClient(
 		analyticsURL,
 		log,
+		shortenerClient,
 	)
 	authClient := httpadapters.NewAuthHTTPClient(
 		authURL,

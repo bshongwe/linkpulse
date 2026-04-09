@@ -4,10 +4,14 @@ import "time"
 
 // CreateLinkRequest represents request to create a short link
 type CreateLinkRequest struct {
-	URL       string     `json:"url" binding:"required,url,max=2048"`
-	ExpiresAt *time.Time `json:"expires_at" binding:"omitempty"`
-	Custom    *string    `json:"custom" binding:"omitempty,max=50"`
-	Tags      []string   `json:"tags" binding:"omitempty"`
+	URL          string     `json:"url" binding:"required,url,max=2048"`
+	Title        *string    `json:"title" binding:"omitempty,max=200"`
+	Description  *string    `json:"description" binding:"omitempty,max=500"`
+	Custom       *string    `json:"custom" binding:"omitempty,max=50"`
+	ExpiresAt    *int64     `json:"expires_at" binding:"omitempty"`          // Unix seconds from frontend
+	RedirectType *string    `json:"redirect_type" binding:"omitempty"`       // "301" or "302"
+	Tags         []string   `json:"tags" binding:"omitempty"`
+	CampaignID   *string    `json:"campaign_id" binding:"omitempty"`
 }
 
 // LinkResponse represents the response for a link
