@@ -43,7 +43,6 @@ export default function CreateLinkModal({ isOpen, onClose, onSuccess }: Readonly
 
       const request: CreateShortLinkRequest = {
         original_url: originalUrl,
-        workspace_id: user.workspace_id || 'default',
         title: title || undefined,
         custom_alias: customAlias || undefined,
       };

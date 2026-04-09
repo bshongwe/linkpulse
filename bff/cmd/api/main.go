@@ -9,9 +9,9 @@ import (
 	"syscall"
 	"time"
 
-	httpadapters "github.com/bshongwe/linkpulse/backend/services/web-bff/internal/adapters/http"
-	"github.com/bshongwe/linkpulse/backend/services/web-bff/internal/application"
-	httphandlers "github.com/bshongwe/linkpulse/backend/services/web-bff/internal/presentation/http"
+	httpadapters "github.com/bshongwe/linkpulse/bff/internal/adapters/http"
+	"github.com/bshongwe/linkpulse/bff/internal/application"
+	httphandlers "github.com/bshongwe/linkpulse/bff/internal/presentation/http"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -54,18 +54,48 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
+	// Get service URLs from environment with defaults
+	shortenerURL := os.Getenv("LINKPULSE_SHORTENER_SERVICE_URL")
+	if shortenerURL == "" {
+		shortenerURL = "http://shortener-service:8082"
+	}
+	analyticsURL := os.Getenv("LINKPULSE_ANALYTICS_SERVICE_URL")
+	if analyticsURL == "" {
+		analyticsURL = "http://analytics-service:8082"
+	}
+	authURL := os.Getenv("LINKPULSE_AUTH_SERVICE_URL")
+	if authURL == "" {
+		authURL = "http://auth-service:8081"
+	}
+
 	// Initialize HTTP clients (adapters)
 	shortenerClient := httpadapters.NewShortenerHTTPClient(
-		"http://shortener-service:8082",
+		shortenerURL,
 		log,
 	)
 	analyticsClient := httpadapters.NewAnalyticsHTTPClient(
-		"http://analytics-service:8082",
+		analyticsURL,
+		log,
+		shortenerClient,
+	)
+	authClient := httpadapters.NewAuthHTTPClient(
+		authURL,
 		log,
 	)
 
 	// Create BFF service
-	bffService := application.NewBFFService(shortenerClient, analyticsClient, log)
+	bffService := application.NewBFFService(
+		shortenerClient,
+		analyticsClient,
+		authClient,
+		log,
+	)
+
+	log.Info("BFF service initialized",
+		zap.String("shortener_url", shortenerURL),
+		zap.String("analytics_url", analyticsURL),
+		zap.String("auth_url", authURL),
+	)
 
 	// Create HTTP handler
 	handler := httphandlers.NewHandler(bffService, log)
@@ -96,7 +126,17 @@ func main() {
 
 	// Register health check
 	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "healthy",
+			"timestamp": time.Now().UTC(),
+		})
+	})
+
+	// Register readiness check
+	router.GET("/readiness", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"ready": true,
+		})
 	})
 
 	// Register BFF routes with JWT secret
@@ -113,7 +153,10 @@ func main() {
 
 	// Start server in a goroutine
 	go func() {
-		log.Info("Web BFF service started", zap.Int("port", port))
+		log.Info("BFF service started",
+			zap.Int("port", port),
+			zap.String("environment", environment),
+		)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal("failed to start server", zap.Error(err))
 		}
@@ -124,7 +167,7 @@ func main() {
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	<-sigChan
 
-	log.Info("Shutting down server...")
+	log.Info("Shutting down BFF service...")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -132,5 +175,5 @@ func main() {
 		log.Error("failed to shutdown server", zap.Error(err))
 	}
 
-	log.Info("Web BFF service stopped")
+	log.Info("BFF service stopped")
 }

@@ -25,45 +25,70 @@ api.interceptors.request.use((config) => {
 
 // Shortened links (via BFF)
 export async function createShortLink(data: CreateShortLinkRequest): Promise<ShortLink> {
-  const url = '/api/v1/bff/links';
-  console.log('📤 POST', API_BASE + url, 'with data:', data); // DEBUG
-  const response = await api.post(url, data);
+  const url = '/api/v1/links';
+  
+  // Map frontend types to BFF types
+  const bffPayload: Record<string, any> = {
+    url: data.original_url,
+    custom: data.custom_alias,
+    tags: data.tags,
+  };
+  
+  // Add optional fields if provided
+  if (data.title) {
+    bffPayload.title = data.title;
+  }
+  if (data.description) {
+    bffPayload.description = data.description;
+  }
+  if (data.expires_at !== undefined) {
+    bffPayload.expires_at = data.expires_at; // Unix seconds
+  }
+  if (data.redirect_type) {
+    bffPayload.redirect_type = data.redirect_type;
+  }
+  if (data.campaign_id) {
+    bffPayload.campaign_id = data.campaign_id;
+  }
+  
+  console.log('📤 POST', API_BASE + url, 'with data:', bffPayload); // DEBUG
+  const response = await api.post(url, bffPayload);
   console.log('✅ Response:', response.data); // DEBUG
   return response.data.data || response.data;
 }
 
 export async function getShortLink(shortCode: string): Promise<ShortLink> {
-  const response = await api.get(`/api/v1/bff/links/${shortCode}`);
+  const response = await api.get(`/api/v1/links/${shortCode}`);
   return response.data.data || response.data;
 }
 
 export async function updateShortLink(linkId: string, data: Partial<ShortLink>): Promise<ShortLink> {
-  const response = await api.put(`/api/v1/bff/links/id/${linkId}`, data);
+  const response = await api.put(`/api/v1/links/id/${linkId}`, data);
   return response.data.data || response.data;
 }
 
-export async function deleteShortLink(linkId: string): Promise<void> {
-  await api.delete(`/api/v1/bff/links/id/${linkId}`);
+export async function deleteShortLink(shortCode: string): Promise<void> {
+  await api.delete(`/api/v1/links/${shortCode}`);
 }
 
 export async function listLinks(): Promise<ShortLink[]> {
-  const response = await api.get(`/api/v1/bff/links`, {
+  const response = await api.get(`/api/v1/links`, {
     params: {
       page: 1,
-      page_size: 100,
+      pageSize: 100,
     },
   });
-  return response.data.data?.links || response.data.data || response.data || [];
+  return response.data.links || response.data.data || response.data || [];
 }
 
 // Analytics
 export async function getAnalytics(linkId: string): Promise<AnalyticsSummary> {
-  const response = await api.get(`/api/v1/bff/links/id/${linkId}/analytics`);
+  const response = await api.get(`/api/v1/links/${linkId}/analytics`);
   return response.data;
 }
 
 export async function getLiveCount(linkId: string): Promise<number> {
-  const response = await api.get(`/api/v1/bff/links/id/${linkId}/analytics`);
+  const response = await api.get(`/api/v1/links/${linkId}/analytics`);
   return response.data.liveCount || 0;
 }
 

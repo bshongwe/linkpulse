@@ -63,8 +63,8 @@ graph TB
 docker-compose up -d
 
 # Frontend runs on http://localhost:3000
-# BFF Gateway runs on http://localhost:8000
-# API requests: http://localhost:8000/api/v1/bff/*
+# BFF Gateway runs on http://localhost:8080
+# API requests: http://localhost:8080/api/v1/*
 ```
 
 ## 📦 Project Structure

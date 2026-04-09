@@ -13,6 +13,10 @@ export default function CreateLinkPage() {
   const [mounted, setMounted] = useState(false);
   const [originalUrl, setOriginalUrl] = useState('');
   const [customAlias, setCustomAlias] = useState('');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [expiresAt, setExpiresAt] = useState<number | undefined>();
+  const [redirectType, setRedirectType] = useState<'permanent' | 'temporary'>('temporary');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -43,11 +47,21 @@ export default function CreateLinkPage() {
         return;
       }
 
+      // Convert expires_at to Unix seconds if provided
+      let expiresAtUnix: number | undefined;
+      if (expiresAt) {
+        expiresAtUnix = Math.floor(expiresAt / 1000); // Convert from milliseconds to seconds
+      }
+
       // Use BFF gateway instead of calling shortener directly
       // BFF will extract workspace_id from JWT automatically
       await createShortLink({
         original_url: originalUrl,
         custom_alias: customAlias || undefined,
+        title: title || undefined,
+        description: description || undefined,
+        expires_at: expiresAtUnix,
+        redirect_type: redirectType,
       });
 
       // Success - redirect to links page
@@ -144,6 +158,76 @@ export default function CreateLinkPage() {
                 className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition-colors"
               />
               <p className="text-xs text-zinc-500 mt-2">Leave blank to auto-generate (e.g., abc123)</p>
+            </div>
+
+            <div>
+              <label htmlFor="title" className="block text-sm font-medium text-zinc-200 mb-2">
+                Title (optional)
+              </label>
+              <input
+                id="title"
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="My Awesome Link"
+                maxLength={200}
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition-colors"
+              />
+              <p className="text-xs text-zinc-500 mt-2">Display name for this link (max 200 characters)</p>
+            </div>
+
+            <div>
+              <label htmlFor="description" className="block text-sm font-medium text-zinc-200 mb-2">
+                Description (optional)
+              </label>
+              <textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Add a description for this link..."
+                maxLength={500}
+                rows={3}
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none transition-colors resize-none"
+              />
+              <p className="text-xs text-zinc-500 mt-2">Notes about this link (max 500 characters)</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="redirect-type" className="block text-sm font-medium text-zinc-200 mb-2">
+                  Redirect Type
+                </label>
+                <select
+                  id="redirect-type"
+                  value={redirectType}
+                  onChange={(e) => setRedirectType(e.target.value as 'permanent' | 'temporary')}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:border-emerald-500 focus:outline-none transition-colors"
+                >
+                  <option value="temporary">Temporary (302)</option>
+                  <option value="permanent">Permanent (301)</option>
+                </select>
+                <p className="text-xs text-zinc-500 mt-2">HTTP redirect code type</p>
+              </div>
+
+              <div>
+                <label htmlFor="expires-at" className="block text-sm font-medium text-zinc-200 mb-2">
+                  Expires At (optional)
+                </label>
+                <input
+                  id="expires-at"
+                  type="datetime-local"
+                  value={expiresAt ? new Date(expiresAt).toISOString().slice(0, 16) : ''}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setExpiresAt(new Date(e.target.value).getTime());
+                    } else {
+                      setExpiresAt(undefined);
+                    }
+                  }}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:border-emerald-500 focus:outline-none transition-colors"
+                />
+                <p className="text-xs text-zinc-500 mt-2">Link will be inactive after this date</p>
+              </div>
             </div>
 
             <div className="flex gap-4 pt-4">
